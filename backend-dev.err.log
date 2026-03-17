@@ -1,0 +1,62 @@
+Traceback (most recent call last):
+  File "D:\Python313\Lib\logging\config.py", line 583, in configure
+    formatters[name] = self.configure_formatter(
+                       ~~~~~~~~~~~~~~~~~~~~~~~~^
+                                        formatters[name])
+                                        ^^^^^^^^^^^^^^^^^
+  File "D:\Python313\Lib\logging\config.py", line 693, in configure_formatter
+    result = self.configure_custom(config)
+  File "D:\Python313\Lib\logging\config.py", line 487, in configure_custom
+    result = c(**kwargs)
+  File "D:\Python313\Lib\site-packages\uvicorn\logging.py", line 42, in __init__
+    self.use_colors = sys.stdout.isatty()
+                      ^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'isatty'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\Python313\Lib\site-packages\uvicorn\__main__.py", line 4, in <module>
+    uvicorn.main()
+    ~~~~~~~~~~~~^^
+  File "D:\Python313\Lib\site-packages\click\core.py", line 1485, in __call__
+    return self.main(*args, **kwargs)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Python313\Lib\site-packages\click\core.py", line 1406, in main
+    rv = self.invoke(ctx)
+  File "D:\Python313\Lib\site-packages\click\core.py", line 1269, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python313\Lib\site-packages\click\core.py", line 824, in invoke
+    return callback(*args, **kwargs)
+  File "D:\Python313\Lib\site-packages\uvicorn\main.py", line 424, in main
+    run(
+    ~~~^
+        app,
+        ^^^^
+    ...<46 lines>...
+        h11_max_incomplete_event_size=h11_max_incomplete_event_size,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\Python313\Lib\site-packages\uvicorn\main.py", line 530, in run
+    config = Config(
+        app,
+    ...<45 lines>...
+        h11_max_incomplete_event_size=h11_max_incomplete_event_size,
+    )
+  File "D:\Python313\Lib\site-packages\uvicorn\config.py", line 278, in __init__
+    self.configure_logging()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\Python313\Lib\site-packages\uvicorn\config.py", line 370, in configure_logging
+    logging.config.dictConfig(self.log_config)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Python313\Lib\logging\config.py", line 935, in dictConfig
+    dictConfigClass(config).configure()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\Python313\Lib\logging\config.py", line 586, in configure
+    raise ValueError('Unable to configure '
+                     'formatter %r' % name) from e
+ValueError: Unable to configure formatter 'default'
