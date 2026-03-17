@@ -65,7 +65,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    app.include_router(papers_router)
+    app.include_router(papers_router, prefix="/api")
     return app
 
 
