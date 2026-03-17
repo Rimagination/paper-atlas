@@ -4,4 +4,4 @@
 # 生产环境：代理到 Render 后端
 /api/*  https://paper-atlas-backend.onrender.com/api/:splat  200
 
-# 本地开发时注释掉上面一行，使用本地后端# Build time: Tue Mar 17 23:03:36     2026
+# 本地开发时注释掉上面一行，使用本地后端
