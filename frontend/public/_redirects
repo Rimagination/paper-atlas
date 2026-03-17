@@ -1,0 +1,8 @@
+# API 代理配置
+# 将 /api/* 请求代理到后端
+# 部署时将 https://your-backend.railway.app 替换为实际后端地址
+
+# 生产环境示例：
+# /api/*  https://paper-atlas-backend.up.railway.app/:splat  200
+
+# 开发环境注释掉上面一行，使用本地后端

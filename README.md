@@ -67,18 +67,38 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 ## 部署到 paperatlas.scansci.com
 
-1. 构建并推送 Docker 镜像：
+### 方案：Cloudflare Pages + Railway
 
-```bash
-docker compose -f docker-compose.prod.yml build
-```
+#### 1. 部署后端到 Railway
 
-2. 在服务器上配置反向代理（如 Cloudflare Tunnel 或 nginx）
+1. 访问 [Railway](https://railway.app) 并登录
+2. 点击 "New Project" → "Deploy from GitHub repo"
+3. 选择 `paper-atlas` 仓库
+4. Root Directory 设置为 `/backend`
+5. 添加环境变量：
+   - `CORS_ORIGINS`: `https://paperatlas.scansci.com`
+   - `SEMANTIC_SCHOLAR_API_KEY`: (可选)
+6. 部署后获得后端 URL，如 `https://paper-atlas-backend.up.railway.app`
 
-3. 配置 HTTPS 证书
+#### 2. 部署前端到 Cloudflare Pages
 
-4. 启动服务：
+1. 访问 [Cloudflare Dashboard](https://dash.cloudflare.com)
+2. 进入 Workers & Pages → Create → Pages → Connect to Git
+3. 选择 `paper-atlas` 仓库
+4. 配置构建：
+   - Build command: `npm run build`
+   - Build output directory: `dist`
+   - Root directory: `/frontend`
+5. 部署
 
-```bash
-docker compose -f docker-compose.prod.yml up -d
-```
+#### 3. 配置 API 代理
+
+在 Cloudflare Pages 设置中添加环境变量：
+- `VITE_API_BASE_URL`: `https://your-backend-url.railway.app`
+
+或者修改 `frontend/public/_redirects` 文件添加代理规则。
+
+#### 4. 绑定自定义域名
+
+1. 在 Cloudflare Pages 项目设置中添加自定义域名 `paperatlas.scansci.com`
+2. DNS 会自动配置
