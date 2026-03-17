@@ -6,9 +6,9 @@ function resolveBaseUrl() {
     return import.meta.env.VITE_API_BASE_URL;
   }
 
-  // 生产环境：使用相对路径，由反向代理处理
+  // 生产环境：直接调用 Render 后端
   if (import.meta.env.PROD) {
-    return "/api";
+    return "https://paper-atlas-backend.onrender.com/api";
   }
 
   // 开发环境：使用本地后端
