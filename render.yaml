@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: paper-atlas-backend
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHONPATH
+        value: .
+      - key: CORS_ORIGINS
+        value: https://paperatlas.scansci.com
+      # REDIS_URL 需要在 Render Dashboard 中手动设置
+      # 如果没有 Redis，后端会使用 fakeredis (内存缓存)
