@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -15,37 +17,53 @@ from backend.services.paper_data import PaperDataClient
 from backend.services.semantic_scholar import SemanticScholarClient
 from backend.services.similarity import SimilarityEngine
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     app_settings = settings or get_settings()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        cache_service = CacheService(app_settings.redis_url)
-        await cache_service.connect()
+        logger.info("Starting up Paper Atlas API...")
+        try:
+            cache_service = CacheService(app_settings.redis_url)
+            await cache_service.connect()
+            logger.info(f"Cache connected: {cache_service.backend}")
 
-        semantic_client = SemanticScholarClient(app_settings)
-        openalex_client = OpenAlexClient(app_settings)
-        frontiers_client = FrontiersClient(app_settings)
-        dblp_client = DblpClient(app_settings)
-        paper_client = PaperDataClient(
-            app_settings,
-            semantic_client,
-            openalex_client,
-            frontiers_client,
-            dblp_client,
-        )
-        similarity_engine = SimilarityEngine(app_settings, paper_client, cache_service)
+            semantic_client = SemanticScholarClient(app_settings)
+            openalex_client = OpenAlexClient(app_settings)
+            frontiers_client = FrontiersClient(app_settings)
+            dblp_client = DblpClient(app_settings)
+            logger.info("Data clients initialized")
 
-        app.state.settings = app_settings
-        app.state.cache = cache_service
-        app.state.paper_client = paper_client
-        app.state.similarity_engine = similarity_engine
+            paper_client = PaperDataClient(
+                app_settings,
+                semantic_client,
+                openalex_client,
+                frontiers_client,
+                dblp_client,
+            )
+            similarity_engine = SimilarityEngine(app_settings, paper_client, cache_service)
+            logger.info("Similarity engine initialized")
 
-        yield
+            app.state.settings = app_settings
+            app.state.cache = cache_service
+            app.state.paper_client = paper_client
+            app.state.similarity_engine = similarity_engine
 
-        await paper_client.close()
-        await cache_service.close()
+            logger.info("Startup complete!")
+            yield
+
+            logger.info("Shutting down...")
+            await paper_client.close()
+            await cache_service.close()
+            logger.info("Shutdown complete")
+        except Exception as e:
+            logger.error(f"Startup failed: {e}")
+            logger.error(traceback.format_exc())
+            raise
 
     app = FastAPI(
         title="Paper Atlas API",
