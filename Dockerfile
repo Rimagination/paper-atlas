@@ -42,8 +42,9 @@ COPY nginx-hf.conf /etc/nginx/conf.d/default.conf
 # Remove default nginx site
 RUN rm -f /etc/nginx/sites-enabled/default
 
-# Copy supervisord configuration
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+# Copy start script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Create necessary directories
 RUN mkdir -p /var/log/supervisor /var/run
@@ -58,8 +59,8 @@ ENV REDIS_URL=""
 EXPOSE 7860
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
     CMD curl -f http://localhost:7860/health || exit 1
 
-# Start supervisord
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Start using custom script
+CMD ["/app/start.sh"]
