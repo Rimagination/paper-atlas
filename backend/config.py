@@ -31,10 +31,17 @@ class Settings(BaseSettings):
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def split_cors_origins(cls, value: str | list[str]) -> list[str]:
+    def split_cors_origins(cls, value):
+        if value is None:
+            return ["*"]
         if isinstance(value, str):
+            # Handle empty string
+            if not value.strip():
+                return ["*"]
             return [item.strip() for item in value.split(",") if item.strip()]
-        return value
+        if isinstance(value, list):
+            return value
+        return ["*"]
 
 
 @lru_cache
