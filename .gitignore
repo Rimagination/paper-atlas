@@ -12,3 +12,12 @@ frontend/coverage/
 backend/.env
 frontend/.env
 
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.svg
+*.webp
+
