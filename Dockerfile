@@ -52,7 +52,7 @@ RUN mkdir -p /var/log/supervisor /var/run
 # Environment variables
 ENV PYTHONPATH=/app
 ENV PORT=7860
-ENV CORS_ORIGINS="*"
+ENV CORS_ORIGINS=*
 ENV REDIS_URL=""
 
 # Expose Hugging Face Spaces default port

@@ -35,4 +35,4 @@ fi
 
 # 启动 nginx（在前台）
 echo "[5] Starting nginx..."
-nginx -g 'daemon off;'
+/usr/sbin/nginx -g 'daemon off;'
