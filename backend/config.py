@@ -8,8 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     semantic_scholar_api_key: str | None = None
-    redis_url: str | None = "redis://localhost:6379/0"
-    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    redis_url: str | None = None
+    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173", "*"]
     max_candidates: int = 150
     similarity_threshold: float = 0.05
     cache_ttl_graph: int = 86_400
