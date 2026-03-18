@@ -25,7 +25,7 @@ function findNode(graphData, paperId) {
 export function useGraph() {
   const { t } = useLanguage();
   const [status, setStatus] = useState("idle");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState("Attention is All You Need");
   const [searchResults, setSearchResults] = useState([]);
   const [searchError, setSearchError] = useState("");
   const [graphData, setGraphData] = useState(null);

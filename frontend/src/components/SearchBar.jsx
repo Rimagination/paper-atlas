@@ -96,7 +96,7 @@ export default function SearchBar({
     (results.length > 0 || isSearching || searchError);
 
   return (
-    <header className="sticky top-0 z-50 px-3 pt-3 sm:px-4">
+    <header className="sticky top-10 z-50 px-3 pt-3 sm:px-4">
       <div className="paper-surface relative overflow-visible rounded-[24px] px-4 py-3 sm:px-5">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-5">
           <div className="flex shrink-0 items-center gap-3 xl:w-[250px]">
@@ -124,7 +124,7 @@ export default function SearchBar({
                 aria-label={t("search.aria")}
               />
 
-              <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500 sm:block">
+              <span className="hidden whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500 sm:block">
                 {t("search.support")}
               </span>
             </div>
