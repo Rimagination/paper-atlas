@@ -1,0 +1,61 @@
+INFO:     Started server process [36808]
+INFO:     Waiting for application startup.
+Redis unavailable, falling back to fakeredis: Error 22 connecting to localhost:6379. 远程计算机拒绝网络连接。.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:12013 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:8400 - "GET /graph/a194bb9c7ea9b48fc9ed1cc2602e7152829f0f7f HTTP/1.1" 502 Bad Gateway
+INFO:     127.0.0.1:8403 - "GET /paper/a194bb9c7ea9b48fc9ed1cc2602e7152829f0f7f HTTP/1.1" 502 Bad Gateway
+INFO:     127.0.0.1:5735 - "GET /graph/W1542649433 HTTP/1.1" 502 Bad Gateway
+INFO:     127.0.0.1:4339 - "GET /search?q=att HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4339 - "GET /search?q=atten HTTP/1.1" 200 OK
+INFO:     127.0.0.1:1559 - "GET /search?q=attention HTTP/1.1" 200 OK
+INFO:     127.0.0.1:5252 - "GET /search?q=attention+is HTTP/1.1" 200 OK
+INFO:     127.0.0.1:7904 - "GET /search?q=attention+is+all HTTP/1.1" 200 OK
+INFO:     127.0.0.1:7904 - "GET /graph/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:7904 - "GET /paper/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:10507 - "GET /search?q=Attention+Is+All+You+Need HTTP/1.1" 200 OK
+INFO:     127.0.0.1:5887 - "GET /paper/W2250539671 HTTP/1.1" 502 Bad Gateway
+INFO:     127.0.0.1:8101 - "GET /paper/W2157331557 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:8101 - "GET /paper/W2963341956 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:11261 - "GET /search?q=Planetary+Boundaries:+Exploring+the+Safe+Operating+Space+for+Humanity HTTP/1.1" 200 OK
+INFO:     127.0.0.1:11190 - "GET /graph/W2105414963 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:11190 - "GET /paper/W2105414963 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:6337 - "GET /search?q=atten HTTP/1.1" 200 OK
+INFO:     127.0.0.1:11125 - "GET /search?q=attention HTTP/1.1" 200 OK
+INFO:     127.0.0.1:11125 - "GET /search?q=attention+i HTTP/1.1" 200 OK
+INFO:     127.0.0.1:11125 - "GET /search?q=attention+is HTTP/1.1" 200 OK
+INFO:     127.0.0.1:11125 - "GET /search?q=attention+is+all HTTP/1.1" 200 OK
+INFO:     127.0.0.1:11125 - "GET /graph/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:11125 - "GET /paper/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:11125 - "GET /search?q=Attention+Is+All+You+Need HTTP/1.1" 200 OK
+INFO:     127.0.0.1:12584 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4870 - "GET /search?q=att HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4870 - "GET /search?q=atten HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4870 - "GET /search?q=attention HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4870 - "GET /search?q=attention+is HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4870 - "GET /search?q=attention+is+all HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4870 - "GET /graph/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4870 - "GET /paper/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4870 - "GET /search?q=Attention+Is+All+You+Need HTTP/1.1" 200 OK
+INFO:     127.0.0.1:5034 - "GET /paper/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:5035 - "GET /search?q=Attention%20Is%20All%20You%20Need HTTP/1.1" 200 OK
+INFO:     127.0.0.1:6497 - "GET /graph/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:6498 - "GET /graph/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:10544 - "GET /graph/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:8528 - "GET /search?q=Attention+Is+All+You+Need HTTP/1.1" 200 OK
+INFO:     127.0.0.1:5463 - "GET /graph/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:5463 - "GET /paper/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4504 - "GET /search?q=atte HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4504 - "GET /search?q=attention HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4504 - "GET /search?q=attention+is HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4504 - "GET /search?q=attention+is+all HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4504 - "GET /graph/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4504 - "GET /paper/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4504 - "GET /search?q=Attention+Is+All+You+Need HTTP/1.1" 200 OK
+INFO:     127.0.0.1:6236 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:8064 - "GET /search?q=Attention%20Is%20All%20You%20Need HTTP/1.1" 200 OK
+INFO:     127.0.0.1:8065 - "GET /paper/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4245 - "GET /search?q=Attention%20Is%20All%20You%20Need HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4246 - "GET /paper/W2626778328 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:4252 - "GET /health HTTP/1.1" 200 OK

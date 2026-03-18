@@ -1,0 +1,7 @@
+# API 代理配置
+# 将 /api/* 请求代理到后端
+
+# 生产环境：代理到 Render 后端
+/api/*  https://paper-atlas-backend.onrender.com/api/:splat  200
+
+# 本地开发时注释掉上面一行，使用本地后端
