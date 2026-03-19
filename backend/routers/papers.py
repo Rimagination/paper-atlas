@@ -4,9 +4,9 @@ import re
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from backend.models.schemas import GraphResponse, PaperDetail, PaperSummary
+from backend.models.schemas import GraphResponse, PaperDetail, PaperSummary, PriorDerivativeResponse, WorkItem
 from backend.services.paper_data import PaperDataError, PaperDataNotFoundError
-from backend.services.semantic_scholar import paper_to_detail, paper_to_summary
+from backend.services.semantic_scholar import paper_to_detail, paper_to_summary, normalize_authors, resolve_doi, resolve_url
 
 router = APIRouter()
 
@@ -94,3 +94,43 @@ async def get_paper(request: Request, paper_id: str) -> PaperDetail:
     detail = paper_to_detail(paper)
     await cache_service.set_json(cache_key, detail.model_dump(mode="json"), settings.cache_ttl_paper)
     return detail
+
+
+@router.get("/prior-derivative/{paper_id}", response_model=PriorDerivativeResponse)
+async def get_prior_derivative(request: Request, paper_id: str) -> PriorDerivativeResponse:
+    cache_service = request.app.state.cache
+    paper_client = request.app.state.paper_client
+    settings = request.app.state.settings
+    cache_key = f"prior_derivative:{paper_id}"
+
+    cached = await cache_service.get_json(cache_key)
+    if cached:
+        return PriorDerivativeResponse.model_validate(cached)
+
+    prior_papers, derivative_papers = await paper_client.get_paper_prior_derivative(paper_id)
+
+    def to_work_item(p: dict) -> WorkItem:
+        return WorkItem(
+            paper_id=p.get("paperId", ""),
+            title=p.get("title") or "Untitled",
+            year=p.get("year"),
+            citation_count=p.get("citationCount") or 0,
+            authors=normalize_authors(p),
+            doi=resolve_doi(p),
+            url=resolve_url(p),
+        )
+
+    result = PriorDerivativeResponse(
+        prior_works=sorted(
+            [to_work_item(p) for p in prior_papers if p.get("paperId")],
+            key=lambda x: x.citation_count,
+            reverse=True,
+        ),
+        derivative_works=sorted(
+            [to_work_item(p) for p in derivative_papers if p.get("paperId")],
+            key=lambda x: x.citation_count,
+            reverse=True,
+        ),
+    )
+    await cache_service.set_json(cache_key, result.model_dump(mode="json"), settings.cache_ttl_paper)
+    return result

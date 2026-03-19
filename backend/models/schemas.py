@@ -46,3 +46,18 @@ class GraphResponse(BaseModel):
     seed_paper_id: str
     mode: str = "citation"
     warning: Optional[str] = None
+
+
+class WorkItem(BaseModel):
+    paper_id: str
+    title: str
+    year: Optional[int] = None
+    citation_count: int = 0
+    authors: list[str] = []
+    doi: Optional[str] = None
+    url: Optional[str] = None
+
+
+class PriorDerivativeResponse(BaseModel):
+    prior_works: list[WorkItem]
+    derivative_works: list[WorkItem]

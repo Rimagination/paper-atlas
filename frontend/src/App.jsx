@@ -150,7 +150,10 @@ export default function App() {
     error,
     graphData,
     isDetailLoading,
+    isPriorDerivativeLoading,
     loadGraph,
+    loadPriorDerivative,
+    priorDerivative,
     query,
     recenter,
     searchError,
@@ -197,6 +200,9 @@ export default function App() {
                 seedPaperId={activeGraphSeedId}
                 selectedPaperId={selectedPaperId}
                 onSelectPaper={(paperId, fallbackNode) => selectPaper(paperId, fallbackNode)}
+                priorDerivative={priorDerivative}
+                isPriorDerivativeLoading={isPriorDerivativeLoading}
+                onLoadPriorDerivative={loadPriorDerivative}
               />
 
               <main className="min-h-0 min-w-0">

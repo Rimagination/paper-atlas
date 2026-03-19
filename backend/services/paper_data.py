@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from typing import Any
 
 from backend.services.dblp import DblpClient, DblpError
 from backend.services.frontiers import FrontiersClient, FrontiersError, FrontiersNotFoundError
@@ -184,6 +185,44 @@ class PaperDataClient:
             return "openalex", results
         except OpenAlexError as exc:
             raise PaperDataError(str(exc)) from exc
+
+    async def get_paper_prior_derivative(
+        self, paper_id: str, max_items: int = 50
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """Return (prior_works, derivative_works) paper dicts from Semantic Scholar."""
+        try:
+            paper = await self.semantic_client.get_paper(paper_id)
+        except (SemanticScholarNotFoundError, SemanticScholarError):
+            return [], []
+
+        references = paper.get("references") or []
+        citations = paper.get("citations") or []
+
+        top_ref_ids = [
+            r["paperId"]
+            for r in sorted(references, key=lambda x: x.get("citationCount") or 0, reverse=True)
+            if r.get("paperId")
+        ][:max_items]
+
+        top_cite_ids = [
+            c["paperId"]
+            for c in sorted(citations, key=lambda x: x.get("citationCount") or 0, reverse=True)
+            if c.get("paperId")
+        ][:max_items]
+
+        async def _fetch(ids: list[str]) -> list[dict[str, Any]]:
+            if not ids:
+                return []
+            try:
+                return await self.semantic_client.get_papers_batch(ids)
+            except SemanticScholarError:
+                return []
+
+        prior_papers, derivative_papers = await asyncio.gather(
+            _fetch(top_ref_ids),
+            _fetch(top_cite_ids),
+        )
+        return prior_papers, derivative_papers
 
     async def get_papers_batch_from_source(self, source: str, ids: list[str]) -> list[dict]:
         if source == "semantic":

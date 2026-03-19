@@ -85,7 +85,14 @@ const messages = {
       compactInstruction: "Scroll horizontally to skim the current map quickly.",
       citations: ({ count }) => `${count} citations`,
       openSourceAria: ({ title }) => `Open source for ${title}`,
-      openSourceTitle: "Open source"
+      openSourceTitle: "Open source",
+      tabSimilar: "Similar",
+      tabPrior: "Prior works",
+      tabDerivative: "Derivative works",
+      priorDesc: "Papers cited by the origin paper — the foundational works it builds upon.",
+      derivativeDesc: "Papers published after the origin that cite it — works it has influenced.",
+      loadingWorks: "Loading...",
+      emptyWorks: "No data available."
     },
     panel: {
       noAbstract: "No abstract is currently available.",
@@ -125,7 +132,8 @@ const messages = {
       openSource: "Open source",
       openAlex: "OpenAlex",
       frontiers: "Frontiers",
-      semanticScholar: "Semantic Scholar"
+      semanticScholar: "Semantic Scholar",
+      googleScholar: "Google Scholar"
     },
     common: {
       separator: " · ",
@@ -212,7 +220,14 @@ const messages = {
       compactInstruction: "横向滚动即可快速浏览当前图谱里的关键论文。",
       citations: ({ count }) => `${count} 次引用`,
       openSourceAria: ({ title }) => `打开《${title}》的原文`,
-      openSourceTitle: "打开原文"
+      openSourceTitle: "打开原文",
+      tabSimilar: "相关论文",
+      tabPrior: "前序工作",
+      tabDerivative: "派生工作",
+      priorDesc: "原论文引用的文献——它所站立的"前人肩膀"。",
+      derivativeDesc: "发表于原论文之后并引用它的工作——它所影响的后继研究。",
+      loadingWorks: "加载中...",
+      emptyWorks: "暂无数据。"
     },
     panel: {
       noAbstract: "暂未提供摘要信息。",
@@ -251,7 +266,8 @@ const messages = {
       openSource: "原文",
       openAlex: "OpenAlex",
       frontiers: "Frontiers",
-      semanticScholar: "Semantic Scholar"
+      semanticScholar: "Semantic Scholar",
+      googleScholar: "谷歌学术"
     },
     common: {
       separator: " · ",

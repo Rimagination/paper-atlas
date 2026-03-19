@@ -1,5 +1,5 @@
 import { startTransition, useEffect, useRef, useState } from "react";
-import { getGraph, getPaperDetail, searchPapers } from "../api/client";
+import { getGraph, getPaperDetail, getPriorDerivative, searchPapers } from "../api/client";
 import { useLanguage } from "../i18n";
 
 function extractApiMessage(error, fallback) {
@@ -34,8 +34,12 @@ export function useGraph() {
   const [activeGraphSeedId, setActiveGraphSeedId] = useState(null);
   const [error, setError] = useState("");
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [priorDerivative, setPriorDerivative] = useState(null);
+  const [isPriorDerivativeLoading, setIsPriorDerivativeLoading] = useState(false);
 
   const detailCacheRef = useRef(new Map());
+  const priorDerivativeCacheRef = useRef(new Map());
+  const priorDerivativeAbortRef = useRef(null);
   const graphCacheRef = useRef(new Map());
   const searchCacheRef = useRef(new Map());
   const graphAbortRef = useRef(null);
@@ -237,13 +241,46 @@ export function useGraph() {
     return loadGraph(paperId);
   }
 
+  async function loadPriorDerivative(seedPaperId) {
+    const cached = priorDerivativeCacheRef.current.get(seedPaperId);
+    if (cached) {
+      startTransition(() => setPriorDerivative(cached));
+      return cached;
+    }
+
+    if (priorDerivativeAbortRef.current) {
+      priorDerivativeAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    priorDerivativeAbortRef.current = controller;
+
+    setIsPriorDerivativeLoading(true);
+    try {
+      const data = await getPriorDerivative(seedPaperId, controller.signal);
+      priorDerivativeCacheRef.current.set(seedPaperId, data);
+      startTransition(() => {
+        setPriorDerivative(data);
+        setIsPriorDerivativeLoading(false);
+      });
+      return data;
+    } catch (err) {
+      if (err?.code !== "ERR_CANCELED") {
+        startTransition(() => setIsPriorDerivativeLoading(false));
+      }
+      return null;
+    }
+  }
+
   return {
     activeGraphSeedId,
     clearSelection,
     error,
     graphData,
     isDetailLoading,
+    isPriorDerivativeLoading,
     loadGraph,
+    loadPriorDerivative,
+    priorDerivative,
     query,
     recenter,
     searchError,

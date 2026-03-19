@@ -42,4 +42,9 @@ export async function getPaperDetail(paperId, signal) {
   return response.data;
 }
 
+export async function getPriorDerivative(paperId, signal) {
+  const response = await client.get(`/prior-derivative/${encodeURIComponent(paperId)}`, { signal });
+  return response.data;
+}
+
 export default client;

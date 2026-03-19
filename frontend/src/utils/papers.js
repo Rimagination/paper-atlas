@@ -70,7 +70,8 @@ export function buildPaperLinks(paper, labels = {}) {
     openSource = "Open source",
     openAlex = "OpenAlex",
     frontiers = "Frontiers",
-    semanticScholar = "Semantic Scholar"
+    semanticScholar = "Semantic Scholar",
+    googleScholar = "Google Scholar"
   } = labels;
   const primaryUrl = resolvePaperUrl(paper);
   const referenceUrl = resolveReferenceUrl(paper);
@@ -80,6 +81,7 @@ export function buildPaperLinks(paper, labels = {}) {
     links.push({
       href: primaryUrl,
       label: resolveDoiUrl(paper) ? doi : openSource,
+      icon: resolveDoiUrl(paper) ? "doi" : "link",
       primary: true
     });
   }
@@ -93,6 +95,16 @@ export function buildPaperLinks(paper, labels = {}) {
         : paperId.startsWith("FRONTIERS:")
           ? frontiers
           : semanticScholar,
+      icon: OPENALEX_ID_PATTERN.test(paperId) ? "openalex" : "semantic",
+      primary: false
+    });
+  }
+
+  if (paper?.title) {
+    links.push({
+      href: `https://scholar.google.com/scholar?q=${encodeURIComponent(paper.title)}`,
+      label: googleScholar,
+      icon: "scholar",
       primary: false
     });
   }
