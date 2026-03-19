@@ -183,10 +183,6 @@ export default function App() {
           status={status}
         />
 
-        {deferredGraphData ? (
-          <MapToolbar graphData={deferredGraphData} selectedPaper={fallbackSelectedPaper} status={status} t={t} />
-        ) : null}
-
         <div className="flex-1 min-h-0 px-3 pb-3 sm:px-4">
           {status === "loadingGraph" && !deferredGraphData ? <LoadingSkeleton /> : null}
           {status === "error" && !deferredGraphData ? <ErrorState error={error} t={t} /> : null}
