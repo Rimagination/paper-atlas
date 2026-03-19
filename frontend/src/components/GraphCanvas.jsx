@@ -3,6 +3,104 @@ import * as d3 from "d3";
 import { resolvePaperUrl } from "../utils/papers";
 import { useLanguage } from "../i18n";
 
+const THEME_STORAGE_KEY = "paper-atlas-theme";
+
+const THEMES = {
+  aurora: {
+    label: "Aurora",
+    swatch: "#9333ea",
+    colors: ["#4f46e5", "#9333ea", "#ec4899"],
+    edge: "rgba(139,92,246,0.45)",
+    seedStroke: "#f472b6",
+    selectedStroke: "#7c3aed",
+    labelColor: "#3b1f6e",
+    noYear: "#818cf8",
+    bg: "linear-gradient(160deg, #f5f3ff 0%, #fdf4ff 55%, #fef9f0 100%)",
+    blobs: [
+      "radial-gradient(ellipse 50% 40% at 12% 18%, rgba(167,139,250,0.14) 0%, transparent 60%)",
+      "radial-gradient(ellipse 42% 32% at 88% 22%, rgba(244,114,182,0.1) 0%, transparent 55%)",
+      "radial-gradient(ellipse 38% 48% at 55% 92%, rgba(99,102,241,0.08) 0%, transparent 50%)",
+    ],
+    legendGradient: "linear-gradient(90deg, #4f46e5 0%, #9333ea 50%, #ec4899 100%)",
+  },
+  ocean: {
+    label: "Ocean",
+    swatch: "#06b6d4",
+    colors: ["#2563eb", "#06b6d4", "#10b981"],
+    edge: "rgba(6,182,212,0.4)",
+    seedStroke: "#34d399",
+    selectedStroke: "#1d4ed8",
+    labelColor: "#0c4a6e",
+    noYear: "#38bdf8",
+    bg: "linear-gradient(160deg, #eff6ff 0%, #ecfeff 55%, #f0fdf4 100%)",
+    blobs: [
+      "radial-gradient(ellipse 50% 40% at 12% 18%, rgba(14,165,233,0.13) 0%, transparent 60%)",
+      "radial-gradient(ellipse 42% 32% at 88% 22%, rgba(16,185,129,0.1) 0%, transparent 55%)",
+      "radial-gradient(ellipse 38% 48% at 55% 92%, rgba(37,99,235,0.08) 0%, transparent 50%)",
+    ],
+    legendGradient: "linear-gradient(90deg, #2563eb 0%, #06b6d4 50%, #10b981 100%)",
+  },
+  sunset: {
+    label: "Sunset",
+    swatch: "#f97316",
+    colors: ["#f59e0b", "#f97316", "#ef4444"],
+    edge: "rgba(249,115,22,0.4)",
+    seedStroke: "#fca5a5",
+    selectedStroke: "#b45309",
+    labelColor: "#7c2d12",
+    noYear: "#fcd34d",
+    bg: "linear-gradient(160deg, #fffbeb 0%, #fff7ed 55%, #fff1f2 100%)",
+    blobs: [
+      "radial-gradient(ellipse 50% 40% at 12% 18%, rgba(245,158,11,0.13) 0%, transparent 60%)",
+      "radial-gradient(ellipse 42% 32% at 88% 22%, rgba(239,68,68,0.1) 0%, transparent 55%)",
+      "radial-gradient(ellipse 38% 48% at 55% 92%, rgba(249,115,22,0.08) 0%, transparent 50%)",
+    ],
+    legendGradient: "linear-gradient(90deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)",
+  },
+  forest: {
+    label: "Forest",
+    swatch: "#16a34a",
+    colors: ["#059669", "#16a34a", "#84cc16"],
+    edge: "rgba(22,163,74,0.4)",
+    seedStroke: "#86efac",
+    selectedStroke: "#065f46",
+    labelColor: "#14532d",
+    noYear: "#6ee7b7",
+    bg: "linear-gradient(160deg, #f0fdf4 0%, #ecfdf5 55%, #f7fee7 100%)",
+    blobs: [
+      "radial-gradient(ellipse 50% 40% at 12% 18%, rgba(5,150,105,0.13) 0%, transparent 60%)",
+      "radial-gradient(ellipse 42% 32% at 88% 22%, rgba(132,204,22,0.1) 0%, transparent 55%)",
+      "radial-gradient(ellipse 38% 48% at 55% 92%, rgba(22,163,74,0.08) 0%, transparent 50%)",
+    ],
+    legendGradient: "linear-gradient(90deg, #059669 0%, #16a34a 50%, #84cc16 100%)",
+  },
+  mono: {
+    label: "Mono",
+    swatch: "#64748b",
+    colors: ["#334155", "#64748b", "#94a3b8"],
+    edge: "rgba(100,116,139,0.4)",
+    seedStroke: "#94a3b8",
+    selectedStroke: "#1e293b",
+    labelColor: "#1e293b",
+    noYear: "#94a3b8",
+    bg: "linear-gradient(160deg, #f8fafc 0%, #f1f5f9 55%, #f8fafc 100%)",
+    blobs: [
+      "radial-gradient(ellipse 50% 40% at 12% 18%, rgba(100,116,139,0.1) 0%, transparent 60%)",
+      "radial-gradient(ellipse 42% 32% at 88% 22%, rgba(148,163,184,0.08) 0%, transparent 55%)",
+      "radial-gradient(ellipse 38% 48% at 55% 92%, rgba(51,65,85,0.06) 0%, transparent 50%)",
+    ],
+    legendGradient: "linear-gradient(90deg, #334155 0%, #64748b 50%, #94a3b8 100%)",
+  },
+};
+
+function getInitialTheme() {
+  try {
+    const stored = typeof window !== "undefined" && window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored && THEMES[stored]) return stored;
+  } catch (_) { /* ignore */ }
+  return "aurora";
+}
+
 function createNodeRadiusScale(nodes = []) {
   const counts = nodes
     .map((node) => Math.max(node.citation_count || 0, 0))
@@ -65,7 +163,14 @@ export default function GraphCanvas({
   const svgRef = useRef(null);
   const tooltipRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [themeKey, setThemeKey] = useState(getInitialTheme);
+  const theme = THEMES[themeKey];
   const { minYear, maxYear } = resolveYearRange(data?.nodes);
+
+  function switchTheme(key) {
+    setThemeKey(key);
+    try { window.localStorage.setItem(THEME_STORAGE_KEY, key); } catch (_) { /* ignore */ }
+  }
 
   useEffect(() => {
     if (!frameRef.current) return undefined;
@@ -91,7 +196,6 @@ export default function GraphCanvas({
     const yearDomainMax = maxYear ?? yearDomainMin + 8;
     const midYear = (yearDomainMin + yearDomainMax) / 2;
 
-    // Dreamy spectrum on bright background: indigo → violet → rose
     const yearScale = d3
       .scaleLinear()
       .domain(
@@ -99,7 +203,7 @@ export default function GraphCanvas({
           ? [yearDomainMin - 1, yearDomainMin, yearDomainMax + 1]
           : [yearDomainMin, midYear, yearDomainMax]
       )
-      .range(["#4f46e5", "#9333ea", "#ec4899"]);
+      .range(theme.colors);
 
     links.forEach((edge) => {
       linkedById.add(`${edge.source}|${edge.target}`);
@@ -107,7 +211,7 @@ export default function GraphCanvas({
     });
 
     const isNeighbor = (s, t) => s === t || linkedById.has(`${s}|${t}`);
-    const nodeColor = (node) => (node.year ? yearScale(node.year) : "#818cf8");
+    const nodeColor = (node) => (node.year ? yearScale(node.year) : theme.noYear);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -176,10 +280,10 @@ export default function GraphCanvas({
     const edgeLayer = viewport.append("g").attr("stroke-linecap", "round");
     const nodeLayer = viewport.append("g");
 
-    // ── Edges: translucent violet ─────────────────────────────────────────
+    // ── Edges ─────────────────────────────────────────────────────────────
     const edgeSelection = edgeLayer
       .selectAll("line").data(links).join("line")
-      .attr("stroke", "rgba(139,92,246,0.45)")
+      .attr("stroke", theme.edge)
       .attr("stroke-width", (e) => edgeWidth(e))
       .attr("stroke-opacity", (e) => edgeOpacity(e));
 
@@ -187,23 +291,23 @@ export default function GraphCanvas({
       .selectAll("g").data(nodes).join("g")
       .style("cursor", "pointer");
 
-    // ── Nodes: jewel-toned with watercolour glow ──────────────────────────
+    // ── Nodes ─────────────────────────────────────────────────────────────
     const circleSelection = nodeSelection
       .append("circle")
       .attr("r", (n) => nodeRadius(n))
       .attr("fill", (n) => nodeColor(n))
-      .attr("stroke", (n) => (n.is_seed ? "#f472b6" : "rgba(255,255,255,0.55)"))
+      .attr("stroke", (n) => (n.is_seed ? theme.seedStroke : "rgba(255,255,255,0.55)"))
       .attr("stroke-width", (n) => (n.is_seed ? 2.5 : 1.5))
       .attr("filter", (n) => (n.is_seed ? "url(#seed-glow)" : "url(#star-glow)"))
       .attr("opacity", 0.88);
 
-    // ── Labels: dark for readability on light bg ──────────────────────────
+    // ── Labels ────────────────────────────────────────────────────────────
     const labelSelection = nodeSelection
       .append("text")
       .text((n) => trimTitle(n.title))
       .attr("text-anchor", "middle")
       .attr("dy", (n) => nodeRadius(n) + 14)
-      .attr("fill", "#3b1f6e")
+      .attr("fill", theme.labelColor)
       .attr("font-size", 10.5)
       .attr("font-family", "IBM Plex Sans, Noto Sans SC, sans-serif")
       .attr("font-weight", 500)
@@ -225,8 +329,8 @@ export default function GraphCanvas({
           return isNeighbor(focusId, n.id) ? 1 : 0.13;
         })
         .attr("stroke", (n) => {
-          if (n.id === selectedPaperId) return "#7c3aed";
-          if (n.is_seed) return "#f472b6";
+          if (n.id === selectedPaperId) return theme.selectedStroke;
+          if (n.is_seed) return theme.seedStroke;
           return "rgba(255,255,255,0.55)";
         })
         .attr("stroke-width", (n) => {
@@ -335,7 +439,7 @@ export default function GraphCanvas({
     updateVisualState();
 
     return () => { simulation.stop(); svg.on(".zoom", null); };
-  }, [data, dimensions.height, dimensions.width, maxYear, minYear, onClearSelection, onSelectPaper, seedPaperId, selectedPaperId, t]);
+  }, [data, dimensions.height, dimensions.width, maxYear, minYear, onClearSelection, onSelectPaper, seedPaperId, selectedPaperId, t, theme]);
 
   const warningText = data?.mode === "topic_fallback" ? t("graph.topicFallbackWarning") : data?.warning;
 
@@ -343,8 +447,15 @@ export default function GraphCanvas({
     <div className="paper-surface flex h-full min-h-[520px] flex-col overflow-hidden rounded-[22px]">
 
       {/* ── Toolbar ── */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-violet-100/80 bg-white/80 px-4 py-3 backdrop-blur-sm">
-        <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-100/80 bg-white/80 px-4 py-3 backdrop-blur-sm">
+        <span
+          className="rounded-full px-3 py-1.5 text-xs font-medium"
+          style={{
+            background: `${theme.colors[0]}12`,
+            border: `1px solid ${theme.colors[0]}30`,
+            color: theme.colors[0],
+          }}
+        >
           {data.mode === "topic_fallback" ? t("graph.topicFallback") : t("graph.citationMap")}
         </span>
         <span className="rounded-full border border-slate-200/80 bg-white/70 px-3 py-1.5 text-xs text-slate-400">
@@ -353,34 +464,49 @@ export default function GraphCanvas({
         <span className="rounded-full border border-slate-200/80 bg-white/70 px-3 py-1.5 text-xs text-slate-400">
           {t("status.edges", { count: data.edges.length })}
         </span>
+
+        {/* Theme palette swatches */}
+        <div className="ml-auto flex items-center gap-1.5">
+          {Object.entries(THEMES).map(([key, th]) => (
+            <button
+              key={key}
+              title={th.label}
+              onClick={() => switchTheme(key)}
+              className="h-[18px] w-[18px] rounded-full transition-transform hover:scale-110"
+              style={{
+                background: th.legendGradient,
+                outline: themeKey === key ? `2px solid ${th.swatch}` : "2px solid transparent",
+                outlineOffset: "2px",
+              }}
+            />
+          ))}
+        </div>
       </div>
 
       {/* ── Graph stage ── */}
       <div ref={frameRef} className="graph-stage relative min-h-0 flex-1 overflow-hidden">
 
-        {/* Dreamy bright background */}
-        <div className="absolute inset-0"
-          style={{ background: "linear-gradient(160deg, #f5f3ff 0%, #fdf4ff 55%, #fef9f0 100%)" }} />
+        {/* Theme background */}
+        <div className="absolute inset-0" style={{ background: theme.bg }} />
 
         {/* Soft aurora washes */}
-        <div className="pointer-events-none absolute inset-0" style={{
-          background: [
-            "radial-gradient(ellipse 50% 40% at 12% 18%, rgba(167,139,250,0.14) 0%, transparent 60%)",
-            "radial-gradient(ellipse 42% 32% at 88% 22%, rgba(244,114,182,0.1) 0%, transparent 55%)",
-            "radial-gradient(ellipse 38% 48% at 55% 92%, rgba(99,102,241,0.08) 0%, transparent 50%)"
-          ].join(", ")
-        }} />
+        <div className="pointer-events-none absolute inset-0"
+          style={{ background: theme.blobs.join(", ") }} />
 
         <svg ref={svgRef} className="relative z-[1] h-full w-full" role="img" aria-label={t("graph.ariaLabel")} />
 
         {/* Hover tooltip – positioned via direct DOM in d3 handlers */}
         <div
           ref={tooltipRef}
-          className="pointer-events-none fixed z-50 hidden max-w-[260px] rounded-xl border border-violet-100 bg-white/95 px-3 py-2 shadow-[0_8px_28px_rgba(109,40,217,0.13)] backdrop-blur-md"
+          className="pointer-events-none fixed z-50 hidden max-w-[260px] rounded-xl bg-white/95 px-3 py-2 backdrop-blur-md"
+          style={{
+            border: `1px solid ${theme.colors[1]}28`,
+            boxShadow: `0 8px 28px ${theme.colors[1]}22`,
+          }}
         >
           <div className="tip-title text-[13px] font-medium leading-snug text-slate-800" />
           <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
-            <span className="tip-year font-semibold text-violet-500" />
+            <span className="tip-year font-semibold" style={{ color: theme.colors[1] }} />
             <span className="tip-cites" />
           </div>
         </div>
@@ -394,10 +520,16 @@ export default function GraphCanvas({
 
         {/* Year-palette legend */}
         {minYear && maxYear && (
-          <div className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-[16px] border border-violet-100 bg-white/80 px-4 py-3 shadow-[0_8px_28px_rgba(109,40,217,0.1)] backdrop-blur-md">
+          <div
+            className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-[16px] bg-white/80 px-4 py-3 backdrop-blur-md"
+            style={{
+              border: `1px solid ${theme.colors[1]}22`,
+              boxShadow: `0 8px 28px ${theme.colors[1]}18`,
+            }}
+          >
             <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{t("graph.yearPalette")}</div>
             <div className="mt-2 h-2.5 w-[200px] rounded-full"
-              style={{ background: "linear-gradient(90deg, #4f46e5 0%, #9333ea 50%, #ec4899 100%)" }} />
+              style={{ background: theme.legendGradient }} />
             <div className="mt-2 flex justify-between text-xs text-slate-400">
               <span>{minYear}</span>
               <span>{maxYear}</span>
