@@ -189,6 +189,12 @@ export function useGraph() {
         setSelectedPaperId(cachedGraph.seed_paper_id);
         setSelectedPaper(seedNode);
         setStatus("ready");
+        // Seed priorDerivative from the embedded graph data if available
+        if (cachedGraph.prior_works?.length || cachedGraph.derivative_works?.length) {
+          const embedded = { prior_works: cachedGraph.prior_works ?? [], derivative_works: cachedGraph.derivative_works ?? [] };
+          setPriorDerivative(embedded);
+          priorDerivativeCacheRef.current.set(cachedGraph.seed_paper_id, embedded);
+        }
       });
       await hydratePaperDetail(cachedGraph.seed_paper_id, seedNode);
       return cachedGraph;
@@ -207,6 +213,12 @@ export function useGraph() {
         setSelectedPaperId(nextGraph.seed_paper_id);
         setSelectedPaper(seedNode);
         setStatus("ready");
+        // Seed priorDerivative from the embedded graph data if available
+        if (nextGraph.prior_works?.length || nextGraph.derivative_works?.length) {
+          const embedded = { prior_works: nextGraph.prior_works ?? [], derivative_works: nextGraph.derivative_works ?? [] };
+          setPriorDerivative(embedded);
+          priorDerivativeCacheRef.current.set(nextGraph.seed_paper_id, embedded);
+        }
       });
 
       await hydratePaperDetail(nextGraph.seed_paper_id, seedNode);
