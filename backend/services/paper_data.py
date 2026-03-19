@@ -189,24 +189,16 @@ class PaperDataClient:
     async def get_paper_prior_derivative(
         self, paper_id: str, max_items: int = 20
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-        """Return (prior_works, derivative_works) without similarity filtering.
+        """Return (prior_works, derivative_works) using real SS citation data.
 
-        Prior works  – the seed's actual references sorted by citation count, via
-                       the dedicated /references endpoint.
-        Derivative works – the seed's most-cited citing papers, obtained by:
-                       1. Fetching inline citations (with citationCount) from the
-                          paper detail (SS returns up to ~10 000 inline), sorting
-                          client-side by citationCount, taking the top-N IDs.
-                       2. Batch-fetching full details for those IDs.
-                       This avoids the /citations endpoint which returns results
-                       in reverse-chronological order, yielding only recent papers.
+        Prior works  – papers the seed cites (SS /references endpoint).
+        Derivative works – papers that cite the seed (SS /citations endpoint).
+        Both sorted client-side by citation count, top *max_items* returned.
 
-        A fresh SemanticScholarClient is created so that any cooldown on the
-        shared client (from graph-building requests) does not abort these calls.
+        A fresh SemanticScholarClient avoids cooldown from graph-building.
         """
         client = SemanticScholarClient(self.settings)
         try:
-            # Resolve prefixed IDs (DOI:, ARXIV:, …) to a bare SS paperId
             ss_id = paper_id
             if ":" in paper_id:
                 try:
@@ -216,41 +208,22 @@ class PaperDataClient:
                     return [], []
 
             async def _fetch_references() -> list[dict[str, Any]]:
-                """Top-cited papers that the seed cites (prior works)."""
                 try:
-                    refs = await client.get_paper_references(ss_id, limit=100)
+                    refs = await client.get_paper_references(ss_id, limit=1000)
                     return sorted(refs, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
                 except (SemanticScholarError, SemanticScholarNotFoundError):
                     return []
 
-            async def _fetch_derivative() -> list[dict[str, Any]]:
-                """Top-cited papers that cite the seed (derivative works).
-
-                Uses inline citations (citationCount included) so we can sort by
-                impact before deciding which papers to fully hydrate.
-                """
+            async def _fetch_citations() -> list[dict[str, Any]]:
                 try:
-                    detail = await client.get_paper(
-                        ss_id, fields="citations.paperId,citations.citationCount"
-                    )
-                    inline = detail.get("citations") or []
-                    top_ids = [
-                        c["paperId"]
-                        for c in sorted(
-                            (c for c in inline if c.get("paperId")),
-                            key=lambda c: c.get("citationCount") or 0,
-                            reverse=True,
-                        )[:max_items]
-                    ]
-                    if not top_ids:
-                        return []
-                    return await client.get_papers_batch(top_ids)
+                    cites = await client.get_paper_citations(ss_id, limit=1000)
+                    return sorted(cites, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
                 except (SemanticScholarError, SemanticScholarNotFoundError):
                     return []
 
             prior_papers, derivative_papers = await asyncio.gather(
                 _fetch_references(),
-                _fetch_derivative(),
+                _fetch_citations(),
             )
             return prior_papers, derivative_papers
         finally:
