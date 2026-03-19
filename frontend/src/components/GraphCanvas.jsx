@@ -96,10 +96,17 @@ export default function GraphCanvas({
     const linkedById = new Set();
     const yearDomainMin = minYear ?? 2015;
     const yearDomainMax = maxYear ?? yearDomainMin + 8;
+    const midYear = (yearDomainMin + yearDomainMax) / 2;
+
+    // Aurora colour scale: deep ocean → violet → aurora pink
     const yearScale = d3
       .scaleLinear()
-      .domain(yearDomainMin === yearDomainMax ? [yearDomainMin - 1, yearDomainMax + 1] : [yearDomainMin, yearDomainMax])
-      .range(["#e9e5f7", "#6D28D9"]);
+      .domain(
+        yearDomainMin === yearDomainMax
+          ? [yearDomainMin - 1, yearDomainMin, yearDomainMax + 1]
+          : [yearDomainMin, midYear, yearDomainMax]
+      )
+      .range(["#1e3a6e", "#7c3aed", "#e879f9"]);
 
     links.forEach((edge) => {
       linkedById.add(`${edge.source}|${edge.target}`);
@@ -107,11 +114,41 @@ export default function GraphCanvas({
     });
 
     const isNeighbor = (sourceId, targetId) => sourceId === targetId || linkedById.has(`${sourceId}|${targetId}`);
-    const nodeColor = (node) => (node.year ? yearScale(node.year) : "#d4cfe8");
+    const nodeColor = (node) => (node.year ? yearScale(node.year) : "#2a1f6e");
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
     svg.attr("viewBox", [0, 0, width, height]).style("cursor", "grab");
 
+    // ── SVG defs: glow filters ────────────────────────────────────────────
+    const defs = svg.append("defs");
+
+    // Subtle star-glow for regular nodes
+    const starFilter = defs.append("filter")
+      .attr("id", "star-glow")
+      .attr("x", "-70%").attr("y", "-70%")
+      .attr("width", "240%").attr("height", "240%");
+    starFilter.append("feGaussianBlur")
+      .attr("in", "SourceGraphic")
+      .attr("stdDeviation", "4")
+      .attr("result", "blur");
+    const starMerge = starFilter.append("feMerge");
+    starMerge.append("feMergeNode").attr("in", "blur");
+    starMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+    // Stronger halo for seed node
+    const seedFilter = defs.append("filter")
+      .attr("id", "seed-glow")
+      .attr("x", "-100%").attr("y", "-100%")
+      .attr("width", "300%").attr("height", "300%");
+    seedFilter.append("feGaussianBlur")
+      .attr("in", "SourceGraphic")
+      .attr("stdDeviation", "9")
+      .attr("result", "blur");
+    const seedMerge = seedFilter.append("feMerge");
+    seedMerge.append("feMergeNode").attr("in", "blur");
+    seedMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+    // ── Viewport & zoom ───────────────────────────────────────────────────
     const viewport = svg.append("g");
 
     const zoom = d3
@@ -152,11 +189,12 @@ export default function GraphCanvas({
     const edgeLayer = viewport.append("g").attr("stroke-linecap", "round");
     const nodeLayer = viewport.append("g");
 
+    // ── Edges: soft violet glow lines ────────────────────────────────────
     const edgeSelection = edgeLayer
       .selectAll("line")
       .data(links)
       .join("line")
-      .attr("stroke", "#c8c0dd")
+      .attr("stroke", "rgba(139,92,246,0.55)")
       .attr("stroke-width", (edge) => edgeWidth(edge))
       .attr("stroke-opacity", (edge) => edgeOpacity(edge));
 
@@ -166,25 +204,28 @@ export default function GraphCanvas({
       .join("g")
       .style("cursor", "pointer");
 
+    // ── Nodes: glowing stars ──────────────────────────────────────────────
     const circleSelection = nodeSelection
       .append("circle")
       .attr("r", (node) => nodeRadius(node))
       .attr("fill", (node) => nodeColor(node))
-      .attr("stroke", (node) => (node.is_seed ? "#F97316" : "rgba(30,27,75,0.15)"))
-      .attr("stroke-width", (node) => (node.is_seed ? 3 : 1.1))
-      .attr("opacity", 0.95);
+      .attr("stroke", (node) => (node.is_seed ? "#f0abfc" : "rgba(167,139,250,0.4)"))
+      .attr("stroke-width", (node) => (node.is_seed ? 2.5 : 1.1))
+      .attr("filter", (node) => (node.is_seed ? "url(#seed-glow)" : "url(#star-glow)"))
+      .attr("opacity", 0.92);
 
+    // ── Labels: light violet on dark bg ──────────────────────────────────
     const labelSelection = nodeSelection
       .append("text")
       .text((node) => trimTitle(node.title))
       .attr("text-anchor", "middle")
       .attr("dy", (node) => nodeRadius(node) + 14)
-      .attr("fill", "#4c4470")
+      .attr("fill", "#ddd6fe")
       .attr("font-size", 10.5)
       .attr("font-family", "IBM Plex Sans, Noto Sans SC, sans-serif")
       .attr("font-weight", 500)
       .attr("paint-order", "stroke")
-      .attr("stroke", "rgba(255,255,255,0.96)")
+      .attr("stroke", "rgba(7,8,24,0.94)")
       .attr("stroke-width", 4)
       .attr("stroke-linejoin", "round")
       .attr("opacity", (node) => (node.is_seed || nodeRadius(node) >= 16 ? 0.9 : 0));
@@ -198,23 +239,26 @@ export default function GraphCanvas({
       circleSelection
         .attr("opacity", (node) => {
           if (!hasHover) {
-            return 0.95;
+            return 0.92;
           }
 
-          return isNeighbor(focusId, node.id) ? 1 : 0.14;
+          return isNeighbor(focusId, node.id) ? 1 : 0.1;
         })
         .attr("stroke", (node) => {
           if (node.id === selectedPaperId) {
-            return "#1e1b4b";
+            return "#67e8f9";      // cyan ring for selected
           }
           if (node.is_seed) {
-            return "#F97316";
+            return "#f0abfc";      // aurora pink ring for seed
           }
-          return "rgba(30,27,75,0.15)";
+          return "rgba(167,139,250,0.4)";
         })
         .attr("stroke-width", (node) => {
-          if (node.id === selectedPaperId || node.is_seed) {
-            return 3;
+          if (node.id === selectedPaperId) {
+            return 2.5;
+          }
+          if (node.is_seed) {
+            return 2.5;
           }
           return 1.1;
         });
@@ -224,7 +268,9 @@ export default function GraphCanvas({
           return edgeOpacity(edge);
         }
 
-        return edge.source.id === focusId || edge.target.id === focusId ? Math.min(edgeOpacity(edge) + 0.18, 1) : 0.03;
+        return edge.source.id === focusId || edge.target.id === focusId
+          ? Math.min(edgeOpacity(edge) + 0.22, 1)
+          : 0.025;
       });
 
       labelSelection.attr("opacity", (node) => {
@@ -236,7 +282,7 @@ export default function GraphCanvas({
           return 0.88;
         }
 
-        return nodeRadius(node) >= 16 ? 0.68 : 0;
+        return nodeRadius(node) >= 16 ? 0.72 : 0;
       });
     }
 
@@ -348,36 +394,55 @@ export default function GraphCanvas({
 
   return (
     <div className="paper-surface flex h-full min-h-[520px] flex-col overflow-hidden rounded-[22px]">
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white/94 px-4 py-3">
-        <span className="rounded-full border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white">
+      {/* ── Toolbar ── */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.07] px-4 py-3"
+        style={{ background: "linear-gradient(90deg, rgba(15,12,40,0.85) 0%, rgba(20,14,50,0.88) 100%)" }}>
+        <span className="rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-300">
           {data.mode === "topic_fallback" ? t("graph.topicFallback") : t("graph.citationMap")}
         </span>
-        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500">
+        <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs text-white/40">
           {t("status.nodes", { count: data.nodes.length })}
         </span>
-        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500">
+        <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs text-white/40">
           {t("status.edges", { count: data.edges.length })}
         </span>
       </div>
 
+      {/* ── Graph stage ── */}
       <div ref={frameRef} className="graph-stage relative min-h-0 flex-1 overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,rgba(250,249,252,0.96)_100%)]" />
+        {/* Deep-space background */}
+        <div className="absolute inset-0"
+          style={{ background: "linear-gradient(180deg, #07081a 0%, #0c0d22 100%)" }} />
+        {/* Aurora nebula blobs */}
+        <div className="pointer-events-none absolute inset-0"
+          style={{
+            background: [
+              "radial-gradient(ellipse 55% 35% at 18% 22%, rgba(120,60,220,0.2) 0%, transparent 60%)",
+              "radial-gradient(ellipse 45% 28% at 82% 28%, rgba(236,72,153,0.13) 0%, transparent 55%)",
+              "radial-gradient(ellipse 40% 50% at 50% 88%, rgba(56,189,248,0.08) 0%, transparent 50%)"
+            ].join(", ")
+          }} />
+
         <svg ref={svgRef} className="relative z-[1] h-full w-full" role="img" aria-label={t("graph.ariaLabel")} />
 
+        {/* Warning badge */}
         {warningText ? (
-          <div className="pointer-events-none absolute bottom-20 left-4 z-10 max-w-xl rounded-[16px] border border-amber-200 bg-white/96 px-4 py-3 text-xs leading-6 text-slate-600 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
+          <div className="pointer-events-none absolute bottom-20 left-4 z-10 max-w-xl rounded-[16px] border border-amber-500/20 px-4 py-3 text-xs leading-6 text-amber-200/75 backdrop-blur-md"
+            style={{ background: "rgba(30,15,5,0.7)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
             {warningText}
           </div>
         ) : null}
 
+        {/* Year-palette legend */}
         {minYear && maxYear ? (
-          <div className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-[16px] border border-slate-200 bg-white/96 px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
-            <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">{t("graph.yearPalette")}</div>
+          <div className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-[16px] border border-white/[0.09] px-4 py-3 backdrop-blur-md"
+            style={{ background: "rgba(8,8,24,0.65)", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-white/28">{t("graph.yearPalette")}</div>
             <div
-              className="mt-2 h-3 w-[220px] rounded-sm"
-              style={{ background: "linear-gradient(90deg, #e9e5f7 0%, #6D28D9 100%)" }}
+              className="mt-2 h-2.5 w-[200px] rounded-full"
+              style={{ background: "linear-gradient(90deg, #1e3a6e 0%, #7c3aed 50%, #e879f9 100%)" }}
             />
-            <div className="mt-2 flex justify-between text-xs text-slate-500">
+            <div className="mt-2 flex justify-between text-xs text-white/35">
               <span>{minYear}</span>
               <span>{maxYear}</span>
             </div>
