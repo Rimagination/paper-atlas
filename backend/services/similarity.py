@@ -366,7 +366,7 @@ def _collect_candidates(seed_paper: dict[str, Any]) -> list[dict[str, Any]]:
 
     for paper in (seed_paper.get("references") or []) + (seed_paper.get("citations") or []):
         paper_id = paper.get("paperId")
-        if not paper_id or not paper.get("title"):
+        if not paper_id:
             continue
 
         existing = candidate_map.get(paper_id)
