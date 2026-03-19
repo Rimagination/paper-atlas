@@ -304,11 +304,13 @@ export default function GraphCanvas({
       const scale = Math.max(0.72, Math.min(1.12,
         Math.min((width - paddingX * 2) / graphWidth, (height - paddingTop - paddingBottom) / graphHeight)
       ));
-      const centerX = (bounds.minX + bounds.maxX) / 2;
-      const centerY = (bounds.minY + bounds.maxY) / 2;
+      // Centre viewport on the seed node, not the bounding-box centre,
+      // so the seed is always in the middle of the screen.
+      const focusX = seedNode ? seedNode.x : (bounds.minX + bounds.maxX) / 2;
+      const focusY = seedNode ? seedNode.y : (bounds.minY + bounds.maxY) / 2;
       const targetCenterY = paddingTop + (height - paddingTop - paddingBottom) / 2;
       svg.call(zoom.transform,
-        d3.zoomIdentity.translate(width / 2 - centerX * scale, targetCenterY - centerY * scale).scale(scale)
+        d3.zoomIdentity.translate(width / 2 - focusX * scale, targetCenterY - focusY * scale).scale(scale)
       );
     }
 
