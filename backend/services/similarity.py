@@ -173,7 +173,7 @@ class SimilarityEngine:
         candidate_ids = [seed_paper_id, *[paper["paperId"] for paper in candidates]]
 
         papers = await self.paper_client.get_papers_batch(candidate_ids)
-        paper_lookup = {paper["paperId"]: paper for paper in papers if paper.get("paperId")}
+        paper_lookup = {paper["paperId"]: paper for paper in papers if paper.get("paperId") and paper.get("title")}
         paper_lookup[seed_paper_id] = _merge_seed_details(seed_paper, paper_lookup.get(seed_paper_id))
 
         graph_response = build_graph_response(
@@ -260,7 +260,7 @@ class SimilarityEngine:
         paper_lookup: dict[str, dict[str, Any]] = {}
         for paper_id in candidate_ids:
             merged_paper = _merge_paper_data(candidate_summaries.get(paper_id), detailed_lookup.get(paper_id))
-            if merged_paper:
+            if merged_paper and merged_paper.get("title"):
                 paper_lookup[paper_id] = merged_paper
         seed_tokens = _topic_tokens(seed_paper)
         scored_candidates: list[tuple[str, float]] = []
@@ -335,7 +335,7 @@ def _extract_prior_derivative(
     prior: list[WorkItem] = []
     derivative: list[WorkItem] = []
     for pid, paper in paper_lookup.items():
-        if pid == seed_paper_id or not pid:
+        if pid == seed_paper_id or not pid or not paper.get("title"):
             continue
         if pid in ref_ids:
             prior.append(paper_to_work_item(paper))
@@ -366,7 +366,7 @@ def _collect_candidates(seed_paper: dict[str, Any]) -> list[dict[str, Any]]:
 
     for paper in (seed_paper.get("references") or []) + (seed_paper.get("citations") or []):
         paper_id = paper.get("paperId")
-        if not paper_id:
+        if not paper_id or not paper.get("title"):
             continue
 
         existing = candidate_map.get(paper_id)

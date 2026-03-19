@@ -84,6 +84,7 @@ class SemanticScholarClient:
             item["citedPaper"]
             for item in payload.get("data", [])
             if item.get("citedPaper", {}).get("paperId")
+            and item["citedPaper"].get("title")
         ]
 
     async def get_paper_citations(self, paper_id: str, limit: int = 500) -> list[dict[str, Any]]:
@@ -101,6 +102,7 @@ class SemanticScholarClient:
             item["citingPaper"]
             for item in payload.get("data", [])
             if item.get("citingPaper", {}).get("paperId")
+            and item["citingPaper"].get("title")
         ]
 
     async def get_papers_batch(self, ids: list[str], fields: str = BATCH_FIELDS) -> list[dict[str, Any]]:

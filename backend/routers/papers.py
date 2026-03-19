@@ -122,12 +122,12 @@ async def get_prior_derivative(request: Request, paper_id: str) -> PriorDerivati
 
     result = PriorDerivativeResponse(
         prior_works=sorted(
-            [to_work_item(p) for p in prior_papers if p.get("paperId")],
+            [to_work_item(p) for p in prior_papers if p.get("paperId") and p.get("title")],
             key=lambda x: x.citation_count,
             reverse=True,
         ),
         derivative_works=sorted(
-            [to_work_item(p) for p in derivative_papers if p.get("paperId")],
+            [to_work_item(p) for p in derivative_papers if p.get("paperId") and p.get("title")],
             key=lambda x: x.citation_count,
             reverse=True,
         ),
