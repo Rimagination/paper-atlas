@@ -88,7 +88,13 @@ def build_graph_response(
     node_max: int,
     edge_max: int,
 ) -> GraphResponse:
-    paper_ids = [paper_id for paper_id in paper_lookup if paper_id]
+    paper_ids = [
+        paper_id for paper_id in paper_lookup
+        if paper_id and (
+            paper_id == seed_paper_id
+            or _real_title(paper_lookup[paper_id].get("title"))
+        )
+    ]
     similarity_edges: list[GraphEdge] = []
 
     ref_sets = {paper_id: _extract_linked_ids(paper_lookup[paper_id].get("references")) for paper_id in paper_ids}
@@ -173,7 +179,11 @@ class SimilarityEngine:
         candidate_ids = [seed_paper_id, *[paper["paperId"] for paper in candidates]]
 
         papers = await self.paper_client.get_papers_batch(candidate_ids)
-        paper_lookup = {paper["paperId"]: paper for paper in papers if paper.get("paperId") and paper.get("title")}
+        paper_lookup = {
+            paper["paperId"]: paper
+            for paper in papers
+            if paper.get("paperId") and _real_title(paper.get("title"))
+        }
         paper_lookup[seed_paper_id] = _merge_seed_details(seed_paper, paper_lookup.get(seed_paper_id))
 
         graph_response = build_graph_response(
@@ -260,7 +270,7 @@ class SimilarityEngine:
         paper_lookup: dict[str, dict[str, Any]] = {}
         for paper_id in candidate_ids:
             merged_paper = _merge_paper_data(candidate_summaries.get(paper_id), detailed_lookup.get(paper_id))
-            if merged_paper and merged_paper.get("title"):
+            if merged_paper and _real_title(merged_paper.get("title")):
                 paper_lookup[paper_id] = merged_paper
         seed_tokens = _topic_tokens(seed_paper)
         scored_candidates: list[tuple[str, float]] = []
@@ -336,7 +346,7 @@ def _extract_prior_derivative(
     prior: list[WorkItem] = []
     derivative: list[WorkItem] = []
     for pid, paper in paper_lookup.items():
-        if pid == seed_paper_id or not pid or not paper.get("title"):
+        if pid == seed_paper_id or not pid or not _real_title(paper.get("title")):
             continue
         paper_year: int | None = paper.get("year")
         if pid in ref_ids:
@@ -365,6 +375,12 @@ def _cosine_overlap(left: set[str], right: set[str]) -> float:
     if denominator == 0:
         return 0.0
     return shared / denominator
+
+
+def _real_title(title: str | None) -> bool:
+    """Return True only if title is a non-empty, non-placeholder string."""
+    t = (title or "").strip()
+    return bool(t) and t.lower() not in {"untitled paper", "untitled"}
 
 
 def _extract_linked_ids(items: Iterable[dict[str, Any]] | None) -> set[str]:
