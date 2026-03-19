@@ -189,38 +189,35 @@ class PaperDataClient:
     async def get_paper_prior_derivative(
         self, paper_id: str, max_items: int = 50
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-        """Return (prior_works, derivative_works) paper dicts from Semantic Scholar."""
-        try:
-            paper = await self.semantic_client.get_paper(paper_id)
-        except (SemanticScholarNotFoundError, SemanticScholarError):
-            return [], []
-
-        references = paper.get("references") or []
-        citations = paper.get("citations") or []
-
-        top_ref_ids = [
-            r["paperId"]
-            for r in sorted(references, key=lambda x: x.get("citationCount") or 0, reverse=True)
-            if r.get("paperId")
-        ][:max_items]
-
-        top_cite_ids = [
-            c["paperId"]
-            for c in sorted(citations, key=lambda x: x.get("citationCount") or 0, reverse=True)
-            if c.get("paperId")
-        ][:max_items]
-
-        async def _fetch(ids: list[str]) -> list[dict[str, Any]]:
-            if not ids:
-                return []
+        """Return (prior_works, derivative_works) using dedicated SS reference/citation endpoints."""
+        # Resolve to a bare SS paper ID if needed
+        ss_id = paper_id
+        if ":" in paper_id:
+            # Try to find the SS paper_id via a paper lookup
             try:
-                return await self.semantic_client.get_papers_batch(ids)
+                paper = await self.semantic_client.get_paper(paper_id, fields="paperId")
+                ss_id = paper.get("paperId") or paper_id
+            except (SemanticScholarNotFoundError, SemanticScholarError):
+                return [], []
+
+        async def _fetch_references() -> list[dict[str, Any]]:
+            try:
+                refs = await self.semantic_client.get_paper_references(ss_id, limit=100)
+                return sorted(refs, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
+            except SemanticScholarError:
+                return []
+
+        async def _fetch_citations() -> list[dict[str, Any]]:
+            try:
+                # Fetch a large sample, sort by citation count, take top N
+                cites = await self.semantic_client.get_paper_citations(ss_id, limit=500)
+                return sorted(cites, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
             except SemanticScholarError:
                 return []
 
         prior_papers, derivative_papers = await asyncio.gather(
-            _fetch(top_ref_ids),
-            _fetch(top_cite_ids),
+            _fetch_references(),
+            _fetch_citations(),
         )
         return prior_papers, derivative_papers
 

@@ -69,6 +69,40 @@ class SemanticScholarClient:
         encoded_id = quote(paper_id, safe="")
         return await self._request("GET", f"/paper/{encoded_id}", params={"fields": fields})
 
+    async def get_paper_references(self, paper_id: str, limit: int = 100) -> list[dict[str, Any]]:
+        """Fetch references via the dedicated /references endpoint (returns all, sorted as-is)."""
+        ref_fields = (
+            "citedPaper.paperId,citedPaper.title,citedPaper.year,"
+            "citedPaper.citationCount,citedPaper.authors,citedPaper.externalIds,citedPaper.url"
+        )
+        encoded_id = quote(paper_id, safe="")
+        payload = await self._request(
+            "GET", f"/paper/{encoded_id}/references",
+            params={"fields": ref_fields, "limit": limit},
+        )
+        return [
+            item["citedPaper"]
+            for item in payload.get("data", [])
+            if item.get("citedPaper", {}).get("paperId")
+        ]
+
+    async def get_paper_citations(self, paper_id: str, limit: int = 500) -> list[dict[str, Any]]:
+        """Fetch citing papers via the dedicated /citations endpoint (larger sample for sorting)."""
+        cite_fields = (
+            "citingPaper.paperId,citingPaper.title,citingPaper.year,"
+            "citingPaper.citationCount,citingPaper.authors,citingPaper.externalIds,citingPaper.url"
+        )
+        encoded_id = quote(paper_id, safe="")
+        payload = await self._request(
+            "GET", f"/paper/{encoded_id}/citations",
+            params={"fields": cite_fields, "limit": limit},
+        )
+        return [
+            item["citingPaper"]
+            for item in payload.get("data", [])
+            if item.get("citingPaper", {}).get("paperId")
+        ]
+
     async def get_papers_batch(self, ids: list[str], fields: str = BATCH_FIELDS) -> list[dict[str, Any]]:
         if not ids:
             return []
