@@ -187,7 +187,7 @@ class PaperDataClient:
             raise PaperDataError(str(exc)) from exc
 
     async def get_paper_prior_derivative(
-        self, paper_id: str, max_items: int = 50
+        self, paper_id: str, max_items: int = 20
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Return (prior_works, derivative_works) using dedicated SS reference/citation endpoints."""
         # Resolve to a bare SS paper ID if needed
