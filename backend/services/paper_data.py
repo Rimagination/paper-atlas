@@ -209,7 +209,7 @@ class PaperDataClient:
                 try:
                     refs = await client.get_paper_references(ss_id, limit=100)
                     return sorted(refs, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
-                except SemanticScholarError:
+                except (SemanticScholarError, SemanticScholarNotFoundError):
                     return []
 
             async def _fetch_citations() -> list[dict[str, Any]]:
@@ -217,7 +217,7 @@ class PaperDataClient:
                 try:
                     cites = await client.get_paper_citations(ss_id, limit=500)
                     return sorted(cites, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
-                except SemanticScholarError:
+                except (SemanticScholarError, SemanticScholarNotFoundError):
                     return []
 
             prior_papers, derivative_papers = await asyncio.gather(
