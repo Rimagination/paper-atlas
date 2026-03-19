@@ -224,7 +224,7 @@ const messages = {
       tabSimilar: "相关论文",
       tabPrior: "前序工作",
       tabDerivative: "派生工作",
-      priorDesc: "原论文引用的文献——它所站立的"前人肩膀"。",
+      priorDesc: "原论文引用的文献——它所站立的「前人肩膀」。",
       derivativeDesc: "发表于原论文之后并引用它的工作——它所影响的后继研究。",
       loadingWorks: "加载中...",
       emptyWorks: "暂无数据。"
