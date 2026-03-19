@@ -63,6 +63,7 @@ export default function GraphCanvas({
   const { t } = useLanguage();
   const frameRef = useRef(null);
   const svgRef = useRef(null);
+  const tooltipRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const { minYear, maxYear } = resolveYearRange(data?.nodes);
 
@@ -212,8 +213,7 @@ export default function GraphCanvas({
       .attr("stroke-linejoin", "round")
       .attr("opacity", (n) => (n.is_seed || nodeRadius(n) >= 16 ? 0.9 : 0));
 
-    nodeSelection.append("title")
-      .text((n) => `${n.title}\n${t("rail.citations", { count: n.citation_count || 0 })}`);
+    // Native SVG title is skipped in favour of the custom HTML tooltip below
 
     function updateVisualState(hoveredId = null) {
       const focusId = hoveredId || selectedPaperId;
@@ -265,8 +265,25 @@ export default function GraphCanvas({
       });
 
     nodeSelection
-      .on("mouseover", (_, n) => updateVisualState(n.id))
-      .on("mouseout", () => updateVisualState())
+      .on("mouseover", (event, n) => {
+        updateVisualState(n.id);
+        const tip = tooltipRef.current;
+        if (!tip) return;
+        tip.querySelector(".tip-title").textContent = n.title || "";
+        tip.querySelector(".tip-year").textContent = n.year ? String(n.year) : "";
+        tip.querySelector(".tip-cites").textContent = `${(n.citation_count || 0).toLocaleString()} ${t("rail.citationsSuffix")}`;
+        tip.style.display = "block";
+        tip.style.left = `${event.clientX + 14}px`;
+        tip.style.top  = `${event.clientY - 52}px`;
+      })
+      .on("mousemove", (event) => {
+        const tip = tooltipRef.current;
+        if (tip) { tip.style.left = `${event.clientX + 14}px`; tip.style.top = `${event.clientY - 52}px`; }
+      })
+      .on("mouseout", () => {
+        updateVisualState();
+        if (tooltipRef.current) tooltipRef.current.style.display = "none";
+      })
       .on("click", (event, n) => { event.stopPropagation(); onSelectPaper(n.id, n); })
       .on("dblclick", (event, n) => {
         event.preventDefault(); event.stopPropagation();
@@ -355,6 +372,18 @@ export default function GraphCanvas({
         }} />
 
         <svg ref={svgRef} className="relative z-[1] h-full w-full" role="img" aria-label={t("graph.ariaLabel")} />
+
+        {/* Hover tooltip – positioned via direct DOM in d3 handlers */}
+        <div
+          ref={tooltipRef}
+          className="pointer-events-none fixed z-50 hidden max-w-[260px] rounded-xl border border-violet-100 bg-white/95 px-3 py-2 shadow-[0_8px_28px_rgba(109,40,217,0.13)] backdrop-blur-md"
+        >
+          <div className="tip-title text-[13px] font-medium leading-snug text-slate-800" />
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
+            <span className="tip-year font-semibold text-violet-500" />
+            <span className="tip-cites" />
+          </div>
+        </div>
 
         {/* Warning */}
         {warningText && (

@@ -189,73 +189,59 @@ class PaperDataClient:
     async def get_paper_prior_derivative(
         self, paper_id: str, max_items: int = 20
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-        """Return (prior_works, derivative_works) using real SS citation data or fallback.
+        """Return (prior_works, derivative_works) using real SS citation data.
 
-        Prior works  – papers the seed cites (SS /references endpoint).
-        Derivative works – papers that cite the seed (SS /citations endpoint).
+        Prior works      – papers the seed cites (SS /references), year ≤ seed year.
+        Derivative works – papers that cite the seed (SS /citations), year ≥ seed year.
         Both sorted client-side by citation count, top *max_items* returned.
 
-        A fresh SemanticScholarClient avoids cooldown from graph-building, 
-        but if it fails, falls back to `self.get_paper` details.
+        Year filtering enforces chronological logic: a paper published before the
+        seed cannot be a derivative work, and a reference published after the seed
+        is almost certainly a data error.
         """
         client = SemanticScholarClient(self.settings)
-        ss_success = False
         prior_papers: list[dict[str, Any]] = []
         derivative_papers: list[dict[str, Any]] = []
-        
+
         try:
-            ss_id = paper_id
-            if ":" in paper_id:
-                try:
-                    paper = await client.get_paper(paper_id, fields="paperId")
-                    ss_id = paper.get("paperId") or paper_id
-                except (SemanticScholarNotFoundError, SemanticScholarError):
-                    ss_id = None
-            
-            if ss_id:
-                async def _fetch_references() -> list[dict[str, Any]]:
-                    try:
-                        refs = await client.get_paper_references(ss_id, limit=1000)
-                        return sorted(refs, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
-                    except (SemanticScholarError, SemanticScholarNotFoundError):
-                        return []
+            # Step 1 – resolve to bare SS paperId and fetch seed year in one call.
+            try:
+                seed_detail = await client.get_paper(paper_id, fields="paperId,year")
+                ss_id: str = seed_detail.get("paperId") or paper_id
+                seed_year: int | None = seed_detail.get("year")
+            except (SemanticScholarNotFoundError, SemanticScholarError):
+                if ":" in paper_id:
+                    # Cannot resolve prefixed ID → give up
+                    return [], []
+                ss_id = paper_id
+                seed_year = None
 
-                async def _fetch_citations() -> list[dict[str, Any]]:
-                    try:
-                        cites = await client.get_paper_citations(ss_id, limit=1000)
-                        return sorted(cites, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
-                    except (SemanticScholarError, SemanticScholarNotFoundError):
-                        return []
+            # Step 2 – fetch references (prior works).
+            try:
+                refs = await client.get_paper_references(ss_id, limit=1000)
+                if seed_year:
+                    # Keep only papers published no later than the seed
+                    refs = [r for r in refs if not r.get("year") or r["year"] <= seed_year]
+                prior_papers = sorted(
+                    refs, key=lambda x: x.get("citationCount") or 0, reverse=True
+                )[:max_items]
+            except (SemanticScholarError, SemanticScholarNotFoundError):
+                pass
 
-                # Run sequentially to respect SS rate limit (~1 req/s without API key).
-                # Concurrent requests cause the second to hit 429 and silently return [].
-                prior_papers = await _fetch_references()
-                derivative_papers = await _fetch_citations()
-                if prior_papers or derivative_papers:
-                    ss_success = True
+            # Step 3 – fetch citations (derivative works).
+            try:
+                cites = await client.get_paper_citations(ss_id, limit=1000)
+                if seed_year:
+                    # Keep only papers published no earlier than the seed
+                    cites = [c for c in cites if not c.get("year") or c["year"] >= seed_year]
+                derivative_papers = sorted(
+                    cites, key=lambda x: x.get("citationCount") or 0, reverse=True
+                )[:max_items]
+            except (SemanticScholarError, SemanticScholarNotFoundError):
+                pass
+
         finally:
             await client.close()
-            
-        if not ss_success:
-            # Fallback
-            try:
-                paper = await self.get_paper(paper_id)
-                ref_ids = [r.get("paperId") for r in paper.get("references") or [] if r.get("paperId")]
-                cite_ids = [c.get("paperId") for c in paper.get("citations") or [] if c.get("paperId")]
-                
-                # We need to fetch details to get titles and citationCounts
-                fetch_ids = (ref_ids[:max_items * 2] + cite_ids[:max_items * 2])
-                if fetch_ids:
-                    details = await self.get_papers_batch(fetch_ids)
-                    detail_map = {p.get("paperId"): p for p in details if p.get("paperId")}
-                    
-                    found_priors = [detail_map[rid] for rid in ref_ids if rid in detail_map]
-                    found_derivs = [detail_map[cid] for cid in cite_ids if cid in detail_map]
-                    
-                    prior_papers = sorted(found_priors, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
-                    derivative_papers = sorted(found_derivs, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
-            except (PaperDataError, PaperDataNotFoundError):
-                pass
 
         return prior_papers, derivative_papers
 
