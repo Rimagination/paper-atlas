@@ -32,14 +32,13 @@ function edgeWidth(edge) {
 }
 
 function edgeOpacity(edge) {
-  return 0.08 + edge.weight * 0.36;
+  return 0.1 + edge.weight * 0.32;
 }
 
 function trimTitle(title, maxLength = 28) {
   if (!title || title.length <= maxLength) {
     return title;
   }
-
   return `${title.slice(0, maxLength - 1)}...`;
 }
 
@@ -48,7 +47,6 @@ function resolveYearRange(nodes = []) {
   if (!years.length) {
     return { minYear: null, maxYear: null };
   }
-
   return {
     minYear: Math.min(...years),
     maxYear: Math.max(...years)
@@ -69,24 +67,18 @@ export default function GraphCanvas({
   const { minYear, maxYear } = resolveYearRange(data?.nodes);
 
   useEffect(() => {
-    if (!frameRef.current) {
-      return undefined;
-    }
-
+    if (!frameRef.current) return undefined;
     const observer = new ResizeObserver(([entry]) => {
       const width = Math.max(entry.contentRect.width, 320);
       const height = Math.max(entry.contentRect.height, 520);
       setDimensions({ width, height });
     });
-
     observer.observe(frameRef.current);
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    if (!svgRef.current || !data || !dimensions.width || !dimensions.height) {
-      return undefined;
-    }
+    if (!svgRef.current || !data || !dimensions.width || !dimensions.height) return undefined;
 
     const width = dimensions.width;
     const height = dimensions.height;
@@ -98,7 +90,7 @@ export default function GraphCanvas({
     const yearDomainMax = maxYear ?? yearDomainMin + 8;
     const midYear = (yearDomainMin + yearDomainMax) / 2;
 
-    // Aurora colour scale: deep ocean → violet → aurora pink
+    // Dreamy spectrum on bright background: indigo → violet → rose
     const yearScale = d3
       .scaleLinear()
       .domain(
@@ -106,192 +98,159 @@ export default function GraphCanvas({
           ? [yearDomainMin - 1, yearDomainMin, yearDomainMax + 1]
           : [yearDomainMin, midYear, yearDomainMax]
       )
-      .range(["#1e3a6e", "#7c3aed", "#e879f9"]);
+      .range(["#4f46e5", "#9333ea", "#ec4899"]);
 
     links.forEach((edge) => {
       linkedById.add(`${edge.source}|${edge.target}`);
       linkedById.add(`${edge.target}|${edge.source}`);
     });
 
-    const isNeighbor = (sourceId, targetId) => sourceId === targetId || linkedById.has(`${sourceId}|${targetId}`);
-    const nodeColor = (node) => (node.year ? yearScale(node.year) : "#2a1f6e");
+    const isNeighbor = (s, t) => s === t || linkedById.has(`${s}|${t}`);
+    const nodeColor = (node) => (node.year ? yearScale(node.year) : "#818cf8");
+
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
     svg.attr("viewBox", [0, 0, width, height]).style("cursor", "grab");
 
-    // ── SVG defs: glow filters ────────────────────────────────────────────
+    // ── SVG defs: soft glow filters ──────────────────────────────────────
     const defs = svg.append("defs");
 
-    // Subtle star-glow for regular nodes
+    // Dreamy halo for regular nodes — on light bg this produces a soft
+    // coloured aura that looks like watercolour bleeding
     const starFilter = defs.append("filter")
       .attr("id", "star-glow")
-      .attr("x", "-70%").attr("y", "-70%")
-      .attr("width", "240%").attr("height", "240%");
+      .attr("x", "-80%").attr("y", "-80%")
+      .attr("width", "260%").attr("height", "260%");
     starFilter.append("feGaussianBlur")
       .attr("in", "SourceGraphic")
-      .attr("stdDeviation", "4")
+      .attr("stdDeviation", "5")
       .attr("result", "blur");
-    const starMerge = starFilter.append("feMerge");
-    starMerge.append("feMergeNode").attr("in", "blur");
-    starMerge.append("feMergeNode").attr("in", "SourceGraphic");
+    const sm = starFilter.append("feMerge");
+    sm.append("feMergeNode").attr("in", "blur");
+    sm.append("feMergeNode").attr("in", "SourceGraphic");
 
     // Stronger halo for seed node
     const seedFilter = defs.append("filter")
       .attr("id", "seed-glow")
-      .attr("x", "-100%").attr("y", "-100%")
-      .attr("width", "300%").attr("height", "300%");
+      .attr("x", "-110%").attr("y", "-110%")
+      .attr("width", "320%").attr("height", "320%");
     seedFilter.append("feGaussianBlur")
       .attr("in", "SourceGraphic")
-      .attr("stdDeviation", "9")
+      .attr("stdDeviation", "10")
       .attr("result", "blur");
-    const seedMerge = seedFilter.append("feMerge");
-    seedMerge.append("feMergeNode").attr("in", "blur");
-    seedMerge.append("feMergeNode").attr("in", "SourceGraphic");
+    const sdm = seedFilter.append("feMerge");
+    sdm.append("feMergeNode").attr("in", "blur");
+    sdm.append("feMergeNode").attr("in", "SourceGraphic");
 
     // ── Viewport & zoom ───────────────────────────────────────────────────
     const viewport = svg.append("g");
-
     const zoom = d3
       .zoom()
       .scaleExtent([0.5, 3.4])
-      .on("zoom", (event) => {
-        viewport.attr("transform", event.transform);
-      });
+      .on("zoom", (event) => viewport.attr("transform", event.transform));
 
     svg.call(zoom).on("dblclick.zoom", null);
     svg.on("click", (event) => {
-      if (event.target === svg.node()) {
-        onClearSelection();
-      }
+      if (event.target === svg.node()) onClearSelection();
     });
 
     const simulation = d3
       .forceSimulation(nodes)
       .force(
         "link",
-        d3
-          .forceLink(links)
-          .id((node) => node.id)
-          .distance((edge) => Math.max(54, 120 - edge.weight * 66))
+        d3.forceLink(links).id((n) => n.id).distance((e) => Math.max(54, 120 - e.weight * 66))
       )
       .force("charge", d3.forceManyBody().strength(-280))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide().radius((node) => nodeRadius(node) + 8));
+      .force("collide", d3.forceCollide().radius((n) => nodeRadius(n) + 8));
 
-    const seedNode = nodes.find((node) => node.id === seedPaperId);
+    const seedNode = nodes.find((n) => n.id === seedPaperId);
     if (seedNode) {
       seedNode.fx = width / 2;
       seedNode.fy = height / 2;
-      seedNode.x = width / 2;
-      seedNode.y = height / 2;
+      seedNode.x  = width / 2;
+      seedNode.y  = height / 2;
     }
 
     const edgeLayer = viewport.append("g").attr("stroke-linecap", "round");
     const nodeLayer = viewport.append("g");
 
-    // ── Edges: soft violet glow lines ────────────────────────────────────
+    // ── Edges: translucent violet ─────────────────────────────────────────
     const edgeSelection = edgeLayer
-      .selectAll("line")
-      .data(links)
-      .join("line")
-      .attr("stroke", "rgba(139,92,246,0.55)")
-      .attr("stroke-width", (edge) => edgeWidth(edge))
-      .attr("stroke-opacity", (edge) => edgeOpacity(edge));
+      .selectAll("line").data(links).join("line")
+      .attr("stroke", "rgba(139,92,246,0.45)")
+      .attr("stroke-width", (e) => edgeWidth(e))
+      .attr("stroke-opacity", (e) => edgeOpacity(e));
 
     const nodeSelection = nodeLayer
-      .selectAll("g")
-      .data(nodes)
-      .join("g")
+      .selectAll("g").data(nodes).join("g")
       .style("cursor", "pointer");
 
-    // ── Nodes: glowing stars ──────────────────────────────────────────────
+    // ── Nodes: jewel-toned with watercolour glow ──────────────────────────
     const circleSelection = nodeSelection
       .append("circle")
-      .attr("r", (node) => nodeRadius(node))
-      .attr("fill", (node) => nodeColor(node))
-      .attr("stroke", (node) => (node.is_seed ? "#f0abfc" : "rgba(167,139,250,0.4)"))
-      .attr("stroke-width", (node) => (node.is_seed ? 2.5 : 1.1))
-      .attr("filter", (node) => (node.is_seed ? "url(#seed-glow)" : "url(#star-glow)"))
-      .attr("opacity", 0.92);
+      .attr("r", (n) => nodeRadius(n))
+      .attr("fill", (n) => nodeColor(n))
+      .attr("stroke", (n) => (n.is_seed ? "#f472b6" : "rgba(255,255,255,0.55)"))
+      .attr("stroke-width", (n) => (n.is_seed ? 2.5 : 1.5))
+      .attr("filter", (n) => (n.is_seed ? "url(#seed-glow)" : "url(#star-glow)"))
+      .attr("opacity", 0.88);
 
-    // ── Labels: light violet on dark bg ──────────────────────────────────
+    // ── Labels: dark for readability on light bg ──────────────────────────
     const labelSelection = nodeSelection
       .append("text")
-      .text((node) => trimTitle(node.title))
+      .text((n) => trimTitle(n.title))
       .attr("text-anchor", "middle")
-      .attr("dy", (node) => nodeRadius(node) + 14)
-      .attr("fill", "#ddd6fe")
+      .attr("dy", (n) => nodeRadius(n) + 14)
+      .attr("fill", "#3b1f6e")
       .attr("font-size", 10.5)
       .attr("font-family", "IBM Plex Sans, Noto Sans SC, sans-serif")
       .attr("font-weight", 500)
       .attr("paint-order", "stroke")
-      .attr("stroke", "rgba(7,8,24,0.94)")
+      .attr("stroke", "rgba(255,255,255,0.97)")
       .attr("stroke-width", 4)
       .attr("stroke-linejoin", "round")
-      .attr("opacity", (node) => (node.is_seed || nodeRadius(node) >= 16 ? 0.9 : 0));
+      .attr("opacity", (n) => (n.is_seed || nodeRadius(n) >= 16 ? 0.9 : 0));
 
-    nodeSelection.append("title").text((node) => `${node.title}\n${t("rail.citations", { count: node.citation_count || 0 })}`);
+    nodeSelection.append("title")
+      .text((n) => `${n.title}\n${t("rail.citations", { count: n.citation_count || 0 })}`);
 
     function updateVisualState(hoveredId = null) {
       const focusId = hoveredId || selectedPaperId;
       const hasHover = Boolean(hoveredId);
 
       circleSelection
-        .attr("opacity", (node) => {
-          if (!hasHover) {
-            return 0.92;
-          }
-
-          return isNeighbor(focusId, node.id) ? 1 : 0.1;
+        .attr("opacity", (n) => {
+          if (!hasHover) return 0.88;
+          return isNeighbor(focusId, n.id) ? 1 : 0.13;
         })
-        .attr("stroke", (node) => {
-          if (node.id === selectedPaperId) {
-            return "#67e8f9";      // cyan ring for selected
-          }
-          if (node.is_seed) {
-            return "#f0abfc";      // aurora pink ring for seed
-          }
-          return "rgba(167,139,250,0.4)";
+        .attr("stroke", (n) => {
+          if (n.id === selectedPaperId) return "#7c3aed";
+          if (n.is_seed) return "#f472b6";
+          return "rgba(255,255,255,0.55)";
         })
-        .attr("stroke-width", (node) => {
-          if (node.id === selectedPaperId) {
-            return 2.5;
-          }
-          if (node.is_seed) {
-            return 2.5;
-          }
-          return 1.1;
+        .attr("stroke-width", (n) => {
+          if (n.id === selectedPaperId || n.is_seed) return 2.5;
+          return 1.5;
         });
 
-      edgeSelection.attr("stroke-opacity", (edge) => {
-        if (!hasHover) {
-          return edgeOpacity(edge);
-        }
-
-        return edge.source.id === focusId || edge.target.id === focusId
-          ? Math.min(edgeOpacity(edge) + 0.22, 1)
-          : 0.025;
+      edgeSelection.attr("stroke-opacity", (e) => {
+        if (!hasHover) return edgeOpacity(e);
+        return e.source.id === focusId || e.target.id === focusId
+          ? Math.min(edgeOpacity(e) + 0.2, 1)
+          : 0.03;
       });
 
-      labelSelection.attr("opacity", (node) => {
-        if (node.id === selectedPaperId || node.id === seedPaperId || node.id === hoveredId) {
-          return 1;
-        }
-
-        if (hasHover && isNeighbor(focusId, node.id) && nodeRadius(node) >= 13) {
-          return 0.88;
-        }
-
-        return nodeRadius(node) >= 16 ? 0.72 : 0;
+      labelSelection.attr("opacity", (n) => {
+        if (n.id === selectedPaperId || n.id === seedPaperId || n.id === hoveredId) return 1;
+        if (hasHover && isNeighbor(focusId, n.id) && nodeRadius(n) >= 13) return 0.88;
+        return nodeRadius(n) >= 16 ? 0.68 : 0;
       });
     }
 
-    const dragBehaviour = d3
-      .drag()
+    const dragBehaviour = d3.drag()
       .on("start", (event) => {
-        if (!event.active) {
-          simulation.alphaTarget(0.25).restart();
-        }
+        if (!event.active) simulation.alphaTarget(0.25).restart();
         event.subject.fx = event.subject.x;
         event.subject.fy = event.subject.y;
       })
@@ -300,154 +259,120 @@ export default function GraphCanvas({
         event.subject.fy = event.y;
       })
       .on("end", (event) => {
-        if (!event.active) {
-          simulation.alphaTarget(0);
-        }
+        if (!event.active) simulation.alphaTarget(0);
         event.subject.fx = event.subject.x;
         event.subject.fy = event.subject.y;
       });
 
     nodeSelection
-      .on("mouseover", (_, node) => updateVisualState(node.id))
+      .on("mouseover", (_, n) => updateVisualState(n.id))
       .on("mouseout", () => updateVisualState())
-      .on("click", (event, node) => {
-        event.stopPropagation();
-        onSelectPaper(node.id, node);
-      })
-      .on("dblclick", (event, node) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const paperUrl = resolvePaperUrl(node);
-        if (paperUrl && typeof window !== "undefined") {
-          window.open(paperUrl, "_blank", "noopener,noreferrer");
-        }
+      .on("click", (event, n) => { event.stopPropagation(); onSelectPaper(n.id, n); })
+      .on("dblclick", (event, n) => {
+        event.preventDefault(); event.stopPropagation();
+        const url = resolvePaperUrl(n);
+        if (url && typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
       })
       .call(dragBehaviour);
 
     function renderFrame() {
       edgeSelection
-        .attr("x1", (edge) => edge.source.x)
-        .attr("y1", (edge) => edge.source.y)
-        .attr("x2", (edge) => edge.target.x)
-        .attr("y2", (edge) => edge.target.y);
-
-      nodeSelection.attr("transform", (node) => `translate(${node.x}, ${node.y})`);
+        .attr("x1", (e) => e.source.x).attr("y1", (e) => e.source.y)
+        .attr("x2", (e) => e.target.x).attr("y2", (e) => e.target.y);
+      nodeSelection.attr("transform", (n) => `translate(${n.x}, ${n.y})`);
     }
 
     const warmupTicks = Math.min(160, 36 + nodes.length * 2);
     simulation.stop();
-    for (let index = 0; index < warmupTicks; index += 1) {
-      simulation.tick();
-    }
+    for (let i = 0; i < warmupTicks; i++) simulation.tick();
     renderFrame();
 
     const bounds = nodes.reduce(
-      (accumulator, node) => ({
-        minX: Math.min(accumulator.minX, (node.x ?? width / 2) - nodeRadius(node)),
-        maxX: Math.max(accumulator.maxX, (node.x ?? width / 2) + nodeRadius(node)),
-        minY: Math.min(accumulator.minY, (node.y ?? height / 2) - nodeRadius(node)),
-        maxY: Math.max(accumulator.maxY, (node.y ?? height / 2) + nodeRadius(node))
+      (acc, n) => ({
+        minX: Math.min(acc.minX, (n.x ?? width / 2) - nodeRadius(n)),
+        maxX: Math.max(acc.maxX, (n.x ?? width / 2) + nodeRadius(n)),
+        minY: Math.min(acc.minY, (n.y ?? height / 2) - nodeRadius(n)),
+        maxY: Math.max(acc.maxY, (n.y ?? height / 2) + nodeRadius(n))
       }),
-      {
-        minX: Number.POSITIVE_INFINITY,
-        maxX: Number.NEGATIVE_INFINITY,
-        minY: Number.POSITIVE_INFINITY,
-        maxY: Number.NEGATIVE_INFINITY
-      }
+      { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
     );
 
     if (Number.isFinite(bounds.minX) && Number.isFinite(bounds.minY)) {
-      const paddingX = 64;
-      const paddingTop = 40;
-      const paddingBottom = 68;
-      const graphWidth = Math.max(bounds.maxX - bounds.minX, 1);
+      const paddingX = 64, paddingTop = 40, paddingBottom = 68;
+      const graphWidth  = Math.max(bounds.maxX - bounds.minX, 1);
       const graphHeight = Math.max(bounds.maxY - bounds.minY, 1);
-      const scale = Math.max(
-        0.72,
-        Math.min(
-          1.12,
-          Math.min((width - paddingX * 2) / graphWidth, (height - paddingTop - paddingBottom) / graphHeight)
-        )
-      );
+      const scale = Math.max(0.72, Math.min(1.12,
+        Math.min((width - paddingX * 2) / graphWidth, (height - paddingTop - paddingBottom) / graphHeight)
+      ));
       const centerX = (bounds.minX + bounds.maxX) / 2;
       const centerY = (bounds.minY + bounds.maxY) / 2;
       const targetCenterY = paddingTop + (height - paddingTop - paddingBottom) / 2;
-
-      svg.call(
-        zoom.transform,
-        d3.zoomIdentity
-          .translate(width / 2 - centerX * scale, targetCenterY - centerY * scale)
-          .scale(scale)
+      svg.call(zoom.transform,
+        d3.zoomIdentity.translate(width / 2 - centerX * scale, targetCenterY - centerY * scale).scale(scale)
       );
     }
 
     simulation.on("tick", renderFrame);
     updateVisualState();
 
-    return () => {
-      simulation.stop();
-      svg.on(".zoom", null);
-    };
+    return () => { simulation.stop(); svg.on(".zoom", null); };
   }, [data, dimensions.height, dimensions.width, maxYear, minYear, onClearSelection, onSelectPaper, seedPaperId, selectedPaperId, t]);
 
   const warningText = data?.mode === "topic_fallback" ? t("graph.topicFallbackWarning") : data?.warning;
 
   return (
     <div className="paper-surface flex h-full min-h-[520px] flex-col overflow-hidden rounded-[22px]">
+
       {/* ── Toolbar ── */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.07] px-4 py-3"
-        style={{ background: "linear-gradient(90deg, rgba(15,12,40,0.85) 0%, rgba(20,14,50,0.88) 100%)" }}>
-        <span className="rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-300">
+      <div className="flex flex-wrap items-center gap-2 border-b border-violet-100/80 bg-white/80 px-4 py-3 backdrop-blur-sm">
+        <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700">
           {data.mode === "topic_fallback" ? t("graph.topicFallback") : t("graph.citationMap")}
         </span>
-        <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs text-white/40">
+        <span className="rounded-full border border-slate-200/80 bg-white/70 px-3 py-1.5 text-xs text-slate-400">
           {t("status.nodes", { count: data.nodes.length })}
         </span>
-        <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs text-white/40">
+        <span className="rounded-full border border-slate-200/80 bg-white/70 px-3 py-1.5 text-xs text-slate-400">
           {t("status.edges", { count: data.edges.length })}
         </span>
       </div>
 
       {/* ── Graph stage ── */}
       <div ref={frameRef} className="graph-stage relative min-h-0 flex-1 overflow-hidden">
-        {/* Deep-space background */}
+
+        {/* Dreamy bright background */}
         <div className="absolute inset-0"
-          style={{ background: "linear-gradient(180deg, #07081a 0%, #0c0d22 100%)" }} />
-        {/* Aurora nebula blobs */}
-        <div className="pointer-events-none absolute inset-0"
-          style={{
-            background: [
-              "radial-gradient(ellipse 55% 35% at 18% 22%, rgba(120,60,220,0.2) 0%, transparent 60%)",
-              "radial-gradient(ellipse 45% 28% at 82% 28%, rgba(236,72,153,0.13) 0%, transparent 55%)",
-              "radial-gradient(ellipse 40% 50% at 50% 88%, rgba(56,189,248,0.08) 0%, transparent 50%)"
-            ].join(", ")
-          }} />
+          style={{ background: "linear-gradient(160deg, #f5f3ff 0%, #fdf4ff 55%, #fef9f0 100%)" }} />
+
+        {/* Soft aurora washes */}
+        <div className="pointer-events-none absolute inset-0" style={{
+          background: [
+            "radial-gradient(ellipse 50% 40% at 12% 18%, rgba(167,139,250,0.14) 0%, transparent 60%)",
+            "radial-gradient(ellipse 42% 32% at 88% 22%, rgba(244,114,182,0.1) 0%, transparent 55%)",
+            "radial-gradient(ellipse 38% 48% at 55% 92%, rgba(99,102,241,0.08) 0%, transparent 50%)"
+          ].join(", ")
+        }} />
 
         <svg ref={svgRef} className="relative z-[1] h-full w-full" role="img" aria-label={t("graph.ariaLabel")} />
 
-        {/* Warning badge */}
-        {warningText ? (
-          <div className="pointer-events-none absolute bottom-20 left-4 z-10 max-w-xl rounded-[16px] border border-amber-500/20 px-4 py-3 text-xs leading-6 text-amber-200/75 backdrop-blur-md"
-            style={{ background: "rgba(30,15,5,0.7)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+        {/* Warning */}
+        {warningText && (
+          <div className="pointer-events-none absolute bottom-20 left-4 z-10 max-w-xl rounded-[16px] border border-amber-200 bg-amber-50/90 px-4 py-3 text-xs leading-6 text-amber-700 shadow-[0_8px_24px_rgba(251,191,36,0.15)] backdrop-blur-sm">
             {warningText}
           </div>
-        ) : null}
+        )}
 
         {/* Year-palette legend */}
-        {minYear && maxYear ? (
-          <div className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-[16px] border border-white/[0.09] px-4 py-3 backdrop-blur-md"
-            style={{ background: "rgba(8,8,24,0.65)", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
-            <div className="text-[11px] uppercase tracking-[0.18em] text-white/28">{t("graph.yearPalette")}</div>
-            <div
-              className="mt-2 h-2.5 w-[200px] rounded-full"
-              style={{ background: "linear-gradient(90deg, #1e3a6e 0%, #7c3aed 50%, #e879f9 100%)" }}
-            />
-            <div className="mt-2 flex justify-between text-xs text-white/35">
+        {minYear && maxYear && (
+          <div className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-[16px] border border-violet-100 bg-white/80 px-4 py-3 shadow-[0_8px_28px_rgba(109,40,217,0.1)] backdrop-blur-md">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{t("graph.yearPalette")}</div>
+            <div className="mt-2 h-2.5 w-[200px] rounded-full"
+              style={{ background: "linear-gradient(90deg, #4f46e5 0%, #9333ea 50%, #ec4899 100%)" }} />
+            <div className="mt-2 flex justify-between text-xs text-slate-400">
               <span>{minYear}</span>
               <span>{maxYear}</span>
             </div>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );
