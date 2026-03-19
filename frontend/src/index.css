@@ -5,9 +5,17 @@
 :root {
   color-scheme: light;
   font-family: "IBM Plex Sans", "Noto Sans SC", sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(139, 92, 246, 0.08), transparent 24%),
-    radial-gradient(circle at top right, rgba(249, 115, 22, 0.06), transparent 22%),
+  /* Theme color variables – overridden at runtime by ThemeProvider */
+  --t-0: #4f46e5;
+  --t-1: #9333ea;
+  --t-2: #ec4899;
+  --t-0-bg: #4f46e512;
+  --t-0-border: #4f46e526;
+  --t-sel: #9333ea33;
+  --t-scroll: #9333ea44;
+  --t-body-bg:
+    radial-gradient(circle at top left, rgba(79, 70, 229, 0.08), transparent 24%),
+    radial-gradient(circle at top right, rgba(236, 72, 153, 0.06), transparent 22%),
     linear-gradient(180deg, #faf9fc 0%, #f3f1f7 100%);
 }
 
@@ -21,10 +29,7 @@ body,
 body {
   margin: 0;
   color: #1e1b4b;
-  background:
-    radial-gradient(circle at top left, rgba(139, 92, 246, 0.08), transparent 24%),
-    radial-gradient(circle at top right, rgba(249, 115, 22, 0.06), transparent 22%),
-    linear-gradient(180deg, #faf9fc 0%, #f3f1f7 100%);
+  background: var(--t-body-bg);
 }
 
 body::before {
@@ -45,7 +50,7 @@ body::before {
 }
 
 ::selection {
-  background: rgba(139, 92, 246, 0.2);
+  background: var(--t-sel);
 }
 
 ::-webkit-scrollbar {
@@ -56,7 +61,7 @@ body::before {
 ::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 9999px;
-  background: rgba(109, 40, 217, 0.25);
+  background: var(--t-scroll);
   background-clip: padding-box;
 }
 
@@ -81,18 +86,14 @@ body::before {
       inset 0 1px 0 rgba(255, 255, 255, 0.86);
   }
 
-  .graph-stage::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(circle at 22% 18%, rgba(139, 92, 246, 0.1), transparent 20%),
-      radial-gradient(circle at 84% 26%, rgba(249, 115, 22, 0.06), transparent 18%),
-      linear-gradient(90deg, rgba(30, 27, 75, 0.03) 1px, transparent 1px),
-      linear-gradient(rgba(30, 27, 75, 0.03) 1px, transparent 1px);
-    background-size: auto, auto, 28px 28px, 28px 28px;
-    opacity: 0.9;
+  /* Theme-aware hover helpers — used by nav links, action buttons, etc. */
+  .t-hover:hover {
+    color: var(--t-0);
+    background-color: var(--t-0-bg);
+  }
+
+  .t-hover-text:hover {
+    color: var(--t-0);
   }
 
   .panel-title {

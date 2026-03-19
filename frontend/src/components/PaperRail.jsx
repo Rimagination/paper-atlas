@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { resolvePaperUrl } from "../utils/papers";
 import { useLanguage } from "../i18n";
+import { useTheme } from "../theme";
 
 function ExternalLinkIcon() {
   return (
@@ -28,15 +29,17 @@ function sortNodes(nodes = [], seedPaperId) {
 }
 
 function SimilarItem({ isActive, isSeed, node, index, onSelectPaper, t }) {
+  const { theme } = useTheme();
   const sourceUrl = resolvePaperUrl(node);
 
   return (
     <div
-      className={`rounded-[14px] border ${
-        isActive
-          ? "border-slate-300 bg-slate-50 shadow-[0_4px_12px_rgba(15,23,42,0.06)]"
-          : "border-slate-200 bg-white"
-      }`}
+      className="rounded-[14px] border transition"
+      style={isActive ? {
+        borderColor: theme.colors[0] + "50",
+        background: theme.colors[0] + "08",
+        boxShadow: `0 4px 12px ${theme.colors[0]}14`,
+      } : { borderColor: "#e2e8f0", background: "#ffffff" }}
     >
       <div className="flex items-start gap-2 p-3">
         <button type="button" onClick={() => onSelectPaper(node.id, node)} className="min-w-0 flex-1 text-left">

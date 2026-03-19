@@ -1,22 +1,20 @@
 import { useState } from "react";
 import { useLanguage } from "../i18n";
+import { useTheme } from "../theme";
 
 function AtlasLogo() {
+  const { theme } = useTheme();
+  const c0 = theme.colors[0];
+  const c2 = theme.colors[2];
   return (
     <svg viewBox="0 0 48 48" className="h-10 w-10" aria-hidden="true">
-      {/* 外圈 */}
-      <circle cx="24" cy="24" r="20" fill="none" stroke="#6D28D9" strokeWidth="2.5" opacity="0.3" />
-      {/* 内圈 */}
-      <circle cx="24" cy="24" r="14" fill="none" stroke="#6D28D9" strokeWidth="2" opacity="0.5" />
-      {/* 指南针指针 - 北 */}
-      <path d="M24 6 L28 24 L24 20 L20 24 Z" fill="#6D28D9" />
-      {/* 指南针指针 - 南 */}
-      <path d="M24 42 L20 24 L24 28 L28 24 Z" fill="#F97316" opacity="0.8" />
-      {/* 中心点 */}
-      <circle cx="24" cy="24" r="3" fill="#6D28D9" />
-      {/* 方位标记 */}
-      <circle cx="24" cy="8" r="2" fill="#6D28D9" />
-      <circle cx="24" cy="40" r="1.5" fill="#F97316" opacity="0.6" />
+      <circle cx="24" cy="24" r="20" fill="none" stroke={c0} strokeWidth="2.5" opacity="0.3" />
+      <circle cx="24" cy="24" r="14" fill="none" stroke={c0} strokeWidth="2" opacity="0.5" />
+      <path d="M24 6 L28 24 L24 20 L20 24 Z" fill={c0} />
+      <path d="M24 42 L20 24 L24 28 L28 24 Z" fill={c2} opacity="0.8" />
+      <circle cx="24" cy="24" r="3" fill={c0} />
+      <circle cx="24" cy="8" r="2" fill={c0} />
+      <circle cx="24" cy="40" r="1.5" fill={c2} opacity="0.6" />
     </svg>
   );
 }
@@ -88,6 +86,7 @@ export default function SearchBar({
   status
 }) {
   const { t } = useLanguage();
+  const { theme } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
   const showDropdown =
@@ -133,7 +132,7 @@ export default function SearchBar({
               <div className="paper-surface absolute left-0 right-0 top-[calc(100%+12px)] z-30 overflow-hidden rounded-[20px] shadow-[0_18px_50px_rgba(15,23,42,0.12)]">
                 {isSearching ? (
                   <div className="flex items-center gap-3 px-5 py-5 text-sm text-slate-600">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-violet-500" />
+                    <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: theme.colors[1] }} />
                     {t("search.searching")}
                   </div>
                 ) : null}

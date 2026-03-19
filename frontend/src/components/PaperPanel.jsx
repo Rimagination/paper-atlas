@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { buildPaperLinks, resolvePaperUrl } from "../utils/papers";
 import { useLanguage } from "../i18n";
+import { useTheme } from "../theme";
 
 function truncateAbstract(abstract, expanded, fallback, ellipsis) {
   if (!abstract) return fallback;
@@ -75,24 +76,36 @@ const ICON_MAP = {
   link: <IconLink />
 };
 
-const SOURCE_COLORS = {
-  doi:      "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100",
-  semantic: "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900",
-  scholar:  "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900",
-  openalex: "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900",
-  link:     "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
-};
-
 function SourceLink({ link }) {
+  const { theme } = useTheme();
   const icon = ICON_MAP[link.icon] || <IconLink />;
-  const colors = SOURCE_COLORS[link.icon] || SOURCE_COLORS.link;
+  const isAccent = link.icon === "doi";
+  if (isAccent) {
+    return (
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noreferrer"
+        title={link.label}
+        className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition"
+        style={{
+          borderColor: theme.colors[0] + "44",
+          background: theme.colors[0] + "0e",
+          color: theme.colors[0],
+        }}
+      >
+        {icon}
+        {link.label}
+      </a>
+    );
+  }
   return (
     <a
       href={link.href}
       target="_blank"
       rel="noreferrer"
       title={link.label}
-      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition ${colors}`}
+      className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
     >
       {icon}
       {link.label}
@@ -102,6 +115,7 @@ function SourceLink({ link }) {
 
 export default function PaperPanel({ isOpen, isLoading, onClose, onRecenter, paper }) {
   const { t } = useLanguage();
+  const { theme } = useTheme();
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
@@ -181,7 +195,7 @@ export default function PaperPanel({ isOpen, isLoading, onClose, onRecenter, pap
                   {paper?.venue ? <span className="text-slate-400">·</span> : null}
                   {paper?.venue ? <span className="truncate max-w-[14rem]">{paper.venue}</span> : null}
                   <span className="text-slate-400">·</span>
-                  <span className="flex items-center gap-1 text-violet-700">
+                  <span className="flex items-center gap-1" style={{ color: theme.colors[0] }}>
                     <CitationIcon />
                     {(paper?.citation_count || 0).toLocaleString()} {t("panel.citations")}
                   </span>
@@ -214,7 +228,8 @@ export default function PaperPanel({ isOpen, isLoading, onClose, onRecenter, pap
                   <button
                     type="button"
                     onClick={() => setExpanded((c) => !c)}
-                    className="mt-3 text-[12px] font-medium text-violet-600 transition hover:text-violet-800"
+                    className="mt-3 text-[12px] font-medium transition t-hover-text"
+                    style={{ color: theme.colors[1] }}
                   >
                     {expanded ? t("panel.showLess") : t("panel.readMore")}
                   </button>

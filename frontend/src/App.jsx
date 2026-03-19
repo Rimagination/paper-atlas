@@ -5,6 +5,7 @@ import PaperRail from "./components/PaperRail";
 import SearchBar from "./components/SearchBar";
 import { useGraph } from "./hooks/useGraph";
 import { useLanguage } from "./i18n";
+import { useTheme } from "./theme";
 
 const OTHER_APPS = [
   { name: "DataRaven", url: "https://dataset.scansci.com" },
@@ -20,7 +21,7 @@ function ScanSciGlobalNav() {
     >
       <a
         href="https://www.scansci.com"
-        className="flex items-center gap-1.5 text-[12px] font-bold text-slate-700 transition-colors hover:text-violet-700"
+        className="flex items-center gap-1.5 text-[12px] font-bold text-slate-700 transition-colors t-hover-text"
       >
         <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 flex-none" fill="currentColor" aria-hidden="true">
           <path d="M6.5 1.5a5 5 0 1 0 0 10 5 5 0 0 0 0-10M0 6.5a6.5 6.5 0 1 1 11.598 4.036l3.433 3.433-1.06 1.06-3.434-3.432A6.5 6.5 0 0 1 0 6.5" />
@@ -36,7 +37,7 @@ function ScanSciGlobalNav() {
           <a
             key={app.name}
             href={app.url}
-            className="rounded-md px-2.5 py-1 text-[11px] font-medium text-slate-500 transition-colors hover:bg-violet-50 hover:text-violet-700"
+            className="rounded-md px-2.5 py-1 text-[11px] font-medium text-slate-500 transition-colors t-hover"
           >
             {app.name}
           </a>
@@ -47,12 +48,23 @@ function ScanSciGlobalNav() {
 }
 
 function StatusChip({ label, accent = false }) {
+  const { theme } = useTheme();
+  if (accent) {
+    return (
+      <span
+        className="rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]"
+        style={{
+          borderColor: theme.colors[0] + "40",
+          background: theme.colors[0] + "10",
+          color: theme.colors[0],
+        }}
+      >
+        {label}
+      </span>
+    );
+  }
   return (
-    <span
-      className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-        accent ? "border-violet-200/90 bg-violet-50 text-violet-800" : "border-slate-200 bg-white/88 text-slate-500"
-      }`}
-    >
+    <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
       {label}
     </span>
   );
