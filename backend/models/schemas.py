@@ -38,16 +38,6 @@ class GraphEdge(BaseModel):
     weight: float
 
 
-class GraphResponse(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
-    nodes: list[GraphNode]
-    edges: list[GraphEdge]
-    seed_paper_id: str
-    mode: str = "citation"
-    warning: Optional[str] = None
-
-
 class WorkItem(BaseModel):
     paper_id: str
     title: str
@@ -61,3 +51,15 @@ class WorkItem(BaseModel):
 class PriorDerivativeResponse(BaseModel):
     prior_works: list[WorkItem]
     derivative_works: list[WorkItem]
+
+
+class GraphResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
+    seed_paper_id: str
+    mode: str = "citation"
+    warning: Optional[str] = None
+    prior_works: list[WorkItem] = []
+    derivative_works: list[WorkItem] = []

@@ -8,7 +8,7 @@ from urllib.parse import quote
 import httpx
 
 from backend.config import Settings
-from backend.models.schemas import GraphNode, PaperDetail, PaperSummary
+from backend.models.schemas import GraphNode, PaperDetail, PaperSummary, WorkItem
 
 SEARCH_FIELDS = "paperId,title,authors,year,citationCount,abstract,venue,externalIds,url"
 DETAIL_FIELDS = (
@@ -161,6 +161,18 @@ def paper_to_detail(paper: dict[str, Any]) -> PaperDetail:
         doi=resolve_doi(paper),
         url=resolve_url(paper),
         reference_count=len(paper.get("references") or []),
+    )
+
+
+def paper_to_work_item(paper: dict[str, Any]) -> WorkItem:
+    return WorkItem(
+        paper_id=paper.get("paperId", ""),
+        title=paper.get("title") or "Untitled",
+        year=paper.get("year"),
+        citation_count=paper.get("citationCount") or 0,
+        authors=normalize_authors(paper),
+        doi=resolve_doi(paper),
+        url=resolve_url(paper),
     )
 
 

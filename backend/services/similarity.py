@@ -12,7 +12,7 @@ from backend.config import Settings
 from backend.models.schemas import GraphEdge, GraphResponse
 from backend.services.cache import CacheService
 from backend.services.paper_data import PaperDataClient, PaperDataError
-from backend.services.semantic_scholar import paper_to_graph_node
+from backend.services.semantic_scholar import paper_to_graph_node, paper_to_work_item
 
 TOPIC_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 TOPIC_STOPWORDS = {
@@ -195,6 +195,11 @@ class SimilarityEngine:
             if len(relaxed_response.nodes) > len(graph_response.nodes):
                 graph_response = relaxed_response
 
+        prior_works, derivative_works = _extract_prior_derivative(seed_paper, paper_lookup, seed_paper_id)
+        graph_response = graph_response.model_copy(
+            update={"prior_works": prior_works, "derivative_works": derivative_works}
+        )
+
         await self.cache_service.set_json(
             cache_key,
             graph_response.model_dump(mode="json"),
@@ -314,6 +319,32 @@ class SimilarityEngine:
             mode="topic_fallback",
             warning="该论文尚未进入 Semantic Scholar/OpenAlex，引文图谱已切换为主题相似回退图。",
         )
+
+
+def _extract_prior_derivative(
+    seed_paper: dict[str, Any],
+    paper_lookup: dict[str, dict[str, Any]],
+    seed_paper_id: str,
+) -> tuple[list, list]:
+    """Return (prior_works, derivative_works) WorkItems from already-fetched paper_lookup."""
+    from backend.models.schemas import WorkItem  # local import avoids circular
+
+    ref_ids = {r["paperId"] for r in (seed_paper.get("references") or []) if r.get("paperId")}
+    cite_ids = {c["paperId"] for c in (seed_paper.get("citations") or []) if c.get("paperId")}
+
+    prior: list[WorkItem] = []
+    derivative: list[WorkItem] = []
+    for pid, paper in paper_lookup.items():
+        if pid == seed_paper_id or not pid:
+            continue
+        if pid in ref_ids:
+            prior.append(paper_to_work_item(paper))
+        elif pid in cite_ids:
+            derivative.append(paper_to_work_item(paper))
+
+    prior.sort(key=lambda x: x.citation_count, reverse=True)
+    derivative.sort(key=lambda x: x.citation_count, reverse=True)
+    return prior, derivative
 
 
 def _cosine_overlap(left: set[str], right: set[str]) -> float:

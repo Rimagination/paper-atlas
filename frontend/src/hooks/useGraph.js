@@ -175,6 +175,9 @@ export function useGraph() {
       setQuery(title);
     }
 
+    // Reset prior/derivative when loading a new graph
+    setPriorDerivative(null);
+
     const cachedGraph = graphCacheRef.current.get(paperId);
     if (cachedGraph) {
       const seedNode = findNode(cachedGraph, cachedGraph.seed_paper_id);
@@ -185,6 +188,13 @@ export function useGraph() {
         setSelectedPaperId(cachedGraph.seed_paper_id);
         setSelectedPaper(seedNode);
         setStatus("ready");
+        // Sync prior/derivative from graph response
+        if (cachedGraph.prior_works?.length || cachedGraph.derivative_works?.length) {
+          setPriorDerivative({
+            prior_works: cachedGraph.prior_works || [],
+            derivative_works: cachedGraph.derivative_works || [],
+          });
+        }
       });
       await hydratePaperDetail(cachedGraph.seed_paper_id, seedNode);
       return cachedGraph;
@@ -203,6 +213,13 @@ export function useGraph() {
         setSelectedPaperId(nextGraph.seed_paper_id);
         setSelectedPaper(seedNode);
         setStatus("ready");
+        // Sync prior/derivative from graph response
+        if (nextGraph.prior_works?.length || nextGraph.derivative_works?.length) {
+          setPriorDerivative({
+            prior_works: nextGraph.prior_works || [],
+            derivative_works: nextGraph.derivative_works || [],
+          });
+        }
       });
 
       await hydratePaperDetail(nextGraph.seed_paper_id, seedNode);
