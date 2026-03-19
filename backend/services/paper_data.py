@@ -227,10 +227,10 @@ class PaperDataClient:
                     except (SemanticScholarError, SemanticScholarNotFoundError):
                         return []
 
-                prior_papers, derivative_papers = await asyncio.gather(
-                    _fetch_references(),
-                    _fetch_citations(),
-                )
+                # Run sequentially to respect SS rate limit (~1 req/s without API key).
+                # Concurrent requests cause the second to hit 429 and silently return [].
+                prior_papers = await _fetch_references()
+                derivative_papers = await _fetch_citations()
                 if prior_papers or derivative_papers:
                     ss_success = True
         finally:
