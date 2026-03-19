@@ -329,6 +329,7 @@ def _extract_prior_derivative(
     """Return (prior_works, derivative_works) WorkItems from already-fetched paper_lookup."""
     from backend.models.schemas import WorkItem  # local import avoids circular
 
+    seed_year: int | None = seed_paper.get("year")
     ref_ids = {r["paperId"] for r in (seed_paper.get("references") or []) if r.get("paperId")}
     cite_ids = {c["paperId"] for c in (seed_paper.get("citations") or []) if c.get("paperId")}
 
@@ -337,11 +338,16 @@ def _extract_prior_derivative(
     for pid, paper in paper_lookup.items():
         if pid == seed_paper_id or not pid or not paper.get("title"):
             continue
+        paper_year: int | None = paper.get("year")
         if pid in ref_ids:
+            if seed_year and paper_year and paper_year > seed_year:
+                continue
             item = paper_to_work_item(paper)
             if item:
                 prior.append(item)
         elif pid in cite_ids:
+            if seed_year and paper_year and paper_year < seed_year:
+                continue
             item = paper_to_work_item(paper)
             if item:
                 derivative.append(item)
