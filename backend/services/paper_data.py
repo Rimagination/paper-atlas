@@ -189,58 +189,80 @@ class PaperDataClient:
     async def get_paper_prior_derivative(
         self, paper_id: str, max_items: int = 20
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-        """Return (prior_works, derivative_works) using real SS citation data.
+        """Return (prior_works, derivative_works) using SS citation data with OpenAlex fallback.
 
-        Prior works      – papers the seed cites (SS /references), year ≤ seed year.
-        Derivative works – papers that cite the seed (SS /citations), year ≥ seed year.
-        Both sorted client-side by citation count, top *max_items* returned.
+        Primary source: SS /references and /citations endpoints.
+        Fallback source: OpenAlex referenced_works and cites: filter (used when SS is
+        unavailable or returns no results due to rate-limiting).
 
-        Year filtering enforces chronological logic: a paper published before the
-        seed cannot be a derivative work, and a reference published after the seed
-        is almost certainly a data error.
+        Year filtering: prior works year ≤ seed year, derivative works year ≥ seed year.
         """
         client = SemanticScholarClient(self.settings)
         prior_papers: list[dict[str, Any]] = []
         derivative_papers: list[dict[str, Any]] = []
+        doi: str | None = None
+        oa_id: str = ""
+
+        def _filter_refs(papers: list[dict], year_limit: int | None, direction: str) -> list[dict]:
+            result = [p for p in papers if (p.get("title") or "").strip()]
+            if year_limit:
+                if direction == "prior":
+                    result = [p for p in result if not p.get("year") or p["year"] <= year_limit]
+                else:
+                    result = [p for p in result if not p.get("year") or p["year"] >= year_limit]
+            return sorted(result, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
 
         try:
-            # Step 1 – resolve to bare SS paperId and fetch seed year in one call.
+            # Step 1 – resolve SS paperId, year, and DOI for OpenAlex fallback.
             try:
-                seed_detail = await client.get_paper(paper_id, fields="paperId,year")
+                seed_detail = await client.get_paper(paper_id, fields="paperId,year,externalIds")
                 ss_id: str = seed_detail.get("paperId") or paper_id
                 seed_year: int | None = seed_detail.get("year")
+                ext_ids = seed_detail.get("externalIds") or {}
+                doi = ext_ids.get("DOI") or ext_ids.get("doi")
             except (SemanticScholarNotFoundError, SemanticScholarError):
                 if ":" in paper_id:
-                    # Cannot resolve prefixed ID → give up
                     return [], []
                 ss_id = paper_id
                 seed_year = None
 
-            # Step 2 – fetch references (prior works).
+            # Step 2 – fetch references (prior works) from SS.
             try:
                 refs = await client.get_paper_references(ss_id, limit=1000)
-                # Require a non-empty title; filter by year if known
-                refs = [r for r in refs if (r.get("title") or "").strip()]
-                if seed_year:
-                    refs = [r for r in refs if not r.get("year") or r["year"] <= seed_year]
-                prior_papers = sorted(
-                    refs, key=lambda x: x.get("citationCount") or 0, reverse=True
-                )[:max_items]
+                prior_papers = _filter_refs(refs, seed_year, "prior")
             except (SemanticScholarError, SemanticScholarNotFoundError):
                 pass
 
-            # Step 3 – fetch citations (derivative works).
+            # Step 2 fallback – OpenAlex referenced_works.
+            if not prior_papers:
+                try:
+                    oa_lookup = f"DOI:{doi}" if doi else paper_id
+                    oa_paper = await self.openalex_client.get_paper(oa_lookup)
+                    oa_id = oa_paper.get("paperId", "")
+                    oa_refs = await self.openalex_client.get_paper_references(oa_id, limit=500)
+                    prior_papers = _filter_refs(oa_refs, seed_year, "prior")
+                except (OpenAlexError, OpenAlexNotFoundError):
+                    pass
+
+            # Step 3 – fetch citations (derivative works) from SS.
             try:
                 cites = await client.get_paper_citations(ss_id, limit=1000)
-                # Require a non-empty title; filter by year if known
-                cites = [c for c in cites if (c.get("title") or "").strip()]
-                if seed_year:
-                    cites = [c for c in cites if not c.get("year") or c["year"] >= seed_year]
-                derivative_papers = sorted(
-                    cites, key=lambda x: x.get("citationCount") or 0, reverse=True
-                )[:max_items]
+                derivative_papers = _filter_refs(cites, seed_year, "derivative")
             except (SemanticScholarError, SemanticScholarNotFoundError):
                 pass
+
+            # Step 3 fallback – OpenAlex cites: filter (returns top-cited papers natively).
+            if not derivative_papers:
+                try:
+                    if not oa_id:
+                        oa_lookup = f"DOI:{doi}" if doi else paper_id
+                        oa_paper = await self.openalex_client.get_paper(oa_lookup)
+                        oa_id = oa_paper.get("paperId", "")
+                    if oa_id:
+                        oa_cites = await self.openalex_client.get_paper_citations(oa_id, limit=200)
+                        derivative_papers = _filter_refs(oa_cites, seed_year, "derivative")
+                except (OpenAlexError, OpenAlexNotFoundError):
+                    pass
 
         finally:
             await client.close()

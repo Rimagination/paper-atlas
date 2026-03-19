@@ -120,14 +120,18 @@ async def get_prior_derivative(request: Request, paper_id: str) -> PriorDerivati
             url=resolve_url(p),
         )
 
+    def _has_real_title(p: dict) -> bool:
+        title = (p.get("title") or "").strip()
+        return bool(title) and title.lower() not in {"untitled", "untitled paper"}
+
     result = PriorDerivativeResponse(
         prior_works=sorted(
-            [to_work_item(p) for p in prior_papers if p.get("paperId") and p.get("title")],
+            [to_work_item(p) for p in prior_papers if p.get("paperId") and _has_real_title(p)],
             key=lambda x: x.citation_count,
             reverse=True,
         ),
         derivative_works=sorted(
-            [to_work_item(p) for p in derivative_papers if p.get("paperId") and p.get("title")],
+            [to_work_item(p) for p in derivative_papers if p.get("paperId") and _has_real_title(p)],
             key=lambda x: x.citation_count,
             reverse=True,
         ),

@@ -59,6 +59,27 @@ class OpenAlexClient:
         payload = await self._request("GET", f"/works/{quote(normalized_id, safe='')}")
         return self._normalize_work(payload)
 
+    async def get_paper_references(self, paper_id: str, limit: int = 500) -> list[dict[str, Any]]:
+        """Fetch referenced works from OpenAlex, returned as normalized works with full metadata."""
+        paper = await self.get_paper(paper_id)
+        ref_ids = [r["paperId"] for r in (paper.get("references") or []) if r.get("paperId")]
+        if not ref_ids:
+            return []
+        return await self.get_papers_batch(ref_ids[:limit])
+
+    async def get_paper_citations(self, openalex_id: str, limit: int = 200) -> list[dict[str, Any]]:
+        """Fetch papers citing the given OpenAlex work, sorted by citation count descending."""
+        payload = await self._request(
+            "GET",
+            "/works",
+            params={
+                "filter": f"cites:{openalex_id}",
+                "sort": "cited_by_count:desc",
+                "per-page": min(limit, 200),
+            },
+        )
+        return [self._normalize_work(work) for work in payload.get("results", [])]
+
     async def get_papers_batch(self, ids: list[str]) -> list[dict[str, Any]]:
         normalized_ids = [self._normalize_input_id(paper_id) for paper_id in ids if paper_id]
         if not normalized_ids:
