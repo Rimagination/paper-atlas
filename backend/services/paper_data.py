@@ -203,13 +203,21 @@ class PaperDataClient:
         doi: str | None = None
         oa_id: str = ""
 
-        def _filter_refs(papers: list[dict], year_limit: int | None, direction: str) -> list[dict]:
+        def _filter_refs(
+            papers: list[dict], year_limit: int | None, direction: str, strict_year: bool = False
+        ) -> list[dict]:
             result = [p for p in papers if (p.get("title") or "").strip()]
             if year_limit:
                 if direction == "prior":
-                    result = [p for p in result if not p.get("year") or p["year"] <= year_limit]
+                    if strict_year:
+                        result = [p for p in result if p.get("year") and p["year"] <= year_limit]
+                    else:
+                        result = [p for p in result if not p.get("year") or p["year"] <= year_limit]
                 else:
-                    result = [p for p in result if not p.get("year") or p["year"] >= year_limit]
+                    if strict_year:
+                        result = [p for p in result if p.get("year") and p["year"] >= year_limit]
+                    else:
+                        result = [p for p in result if not p.get("year") or p["year"] >= year_limit]
             return sorted(result, key=lambda x: x.get("citationCount") or 0, reverse=True)[:max_items]
 
         try:
@@ -239,8 +247,11 @@ class PaperDataClient:
                     oa_lookup = f"DOI:{doi}" if doi else paper_id
                     oa_paper = await self.openalex_client.get_paper(oa_lookup)
                     oa_id = oa_paper.get("paperId", "")
+                    # Use OA seed year when SS didn't provide one
+                    oa_seed_year = seed_year or oa_paper.get("year")
                     oa_refs = await self.openalex_client.get_paper_references(oa_id, limit=500)
-                    prior_papers = _filter_refs(oa_refs, seed_year, "prior")
+                    # Strict: OA data quality is lower, require explicit year within bounds
+                    prior_papers = _filter_refs(oa_refs, oa_seed_year, "prior", strict_year=True)
                 except (OpenAlexError, OpenAlexNotFoundError):
                     pass
 
@@ -254,13 +265,15 @@ class PaperDataClient:
             # Step 3 fallback – OpenAlex cites: filter (returns top-cited papers natively).
             if not derivative_papers:
                 try:
+                    oa_seed_year_d: int | None = seed_year
                     if not oa_id:
                         oa_lookup = f"DOI:{doi}" if doi else paper_id
                         oa_paper = await self.openalex_client.get_paper(oa_lookup)
                         oa_id = oa_paper.get("paperId", "")
+                        oa_seed_year_d = seed_year or oa_paper.get("year")
                     if oa_id:
                         oa_cites = await self.openalex_client.get_paper_citations(oa_id, limit=200)
-                        derivative_papers = _filter_refs(oa_cites, seed_year, "derivative")
+                        derivative_papers = _filter_refs(oa_cites, oa_seed_year_d, "derivative", strict_year=True)
                 except (OpenAlexError, OpenAlexNotFoundError):
                     pass
 
