@@ -219,8 +219,9 @@ class PaperDataClient:
             # Step 2 – fetch references (prior works).
             try:
                 refs = await client.get_paper_references(ss_id, limit=1000)
+                # Require a non-empty title; filter by year if known
+                refs = [r for r in refs if (r.get("title") or "").strip()]
                 if seed_year:
-                    # Keep only papers published no later than the seed
                     refs = [r for r in refs if not r.get("year") or r["year"] <= seed_year]
                 prior_papers = sorted(
                     refs, key=lambda x: x.get("citationCount") or 0, reverse=True
@@ -231,8 +232,9 @@ class PaperDataClient:
             # Step 3 – fetch citations (derivative works).
             try:
                 cites = await client.get_paper_citations(ss_id, limit=1000)
+                # Require a non-empty title; filter by year if known
+                cites = [c for c in cites if (c.get("title") or "").strip()]
                 if seed_year:
-                    # Keep only papers published no earlier than the seed
                     cites = [c for c in cites if not c.get("year") or c["year"] >= seed_year]
                 derivative_papers = sorted(
                     cites, key=lambda x: x.get("citationCount") or 0, reverse=True

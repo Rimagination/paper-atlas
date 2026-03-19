@@ -200,10 +200,14 @@ def paper_to_detail(paper: dict[str, Any]) -> PaperDetail:
     )
 
 
-def paper_to_work_item(paper: dict[str, Any]) -> WorkItem:
+def paper_to_work_item(paper: dict[str, Any]) -> "WorkItem | None":
+    """Return a WorkItem, or None if the paper has no usable title."""
+    title = (paper.get("title") or "").strip()
+    if not title:
+        return None
     return WorkItem(
         paper_id=paper.get("paperId", ""),
-        title=paper.get("title") or "Untitled",
+        title=title,
         year=paper.get("year"),
         citation_count=paper.get("citationCount") or 0,
         authors=normalize_authors(paper),

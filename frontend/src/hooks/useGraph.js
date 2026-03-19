@@ -26,10 +26,13 @@ function findNode(graphData, paperId) {
 // the similarity graph → typically high-citation, topically relevant).
 // These give better results than the SS /citations endpoint (newest-first) for
 // popular papers, so we use them as a fallback when they outrank the API data.
-function extractGraphDW(graphData) {
-  return [...(graphData?.derivative_works || [])]
-    .sort((a, b) => (b.citation_count || 0) - (a.citation_count || 0))
-    .slice(0, 20);
+function extractGraphWorks(graphData) {
+  const sort = (arr) =>
+    [...(arr || [])].sort((a, b) => (b.citation_count || 0) - (a.citation_count || 0)).slice(0, 20);
+  return {
+    prior: sort(graphData?.prior_works),
+    derivative: sort(graphData?.derivative_works),
+  };
 }
 
 export function useGraph() {
@@ -200,10 +203,10 @@ export function useGraph() {
         setSelectedPaper(seedNode);
         setStatus("ready");
       });
-      const cachedGraphDW = extractGraphDW(cachedGraph);
+      const cachedGraphWorks = extractGraphWorks(cachedGraph);
       await Promise.all([
         hydratePaperDetail(cachedGraph.seed_paper_id, seedNode),
-        loadPriorDerivative(cachedGraph.seed_paper_id, cachedGraphDW),
+        loadPriorDerivative(cachedGraph.seed_paper_id, cachedGraphWorks),
       ]);
       return cachedGraph;
     }
@@ -223,10 +226,10 @@ export function useGraph() {
         setStatus("ready");
       });
 
-      const nextGraphDW = extractGraphDW(nextGraph);
+      const nextGraphWorks = extractGraphWorks(nextGraph);
       await Promise.all([
         hydratePaperDetail(nextGraph.seed_paper_id, seedNode),
-        loadPriorDerivative(nextGraph.seed_paper_id, nextGraphDW),
+        loadPriorDerivative(nextGraph.seed_paper_id, nextGraphWorks),
       ]);
       return nextGraph;
     } catch (requestError) {
@@ -263,15 +266,21 @@ export function useGraph() {
     return loadGraph(paperId);
   }
 
-  // graphDW: graph-embedded derivative_works, pre-sorted by citation count.
-  // The graph selects papers by similarity, so its DW are topically-relevant
-  // citing papers with high citation counts — far better than SS /citations
-  // (newest-first) for popular papers like "Attention is All You Need".
-  async function loadPriorDerivative(seedPaperId, graphDW = []) {
+  // graphWorks: { prior, derivative } pre-sorted from graph response.
+  // Graph data is already in memory, so it's a reliable fallback when the
+  // dedicated API call fails (e.g., SS rate-limited right after graph build).
+  async function loadPriorDerivative(seedPaperId, graphWorks = { prior: [], derivative: [] }) {
     const cached = priorDerivativeCacheRef.current.get(seedPaperId);
     if (cached) {
       startTransition(() => setPriorDerivative(cached));
       return cached;
+    }
+
+    // Show graph-embedded data immediately while the API fetch is in flight
+    if (graphWorks.prior.length || graphWorks.derivative.length) {
+      startTransition(() =>
+        setPriorDerivative({ prior_works: graphWorks.prior, derivative_works: graphWorks.derivative })
+      );
     }
 
     if (priorDerivativeAbortRef.current) {
@@ -286,15 +295,18 @@ export function useGraph() {
       const apiPW = data?.prior_works || [];
       const apiDW = data?.derivative_works || [];
 
-      // prior_works:      always use SS /references (accurate, sorted by citation count)
-      // derivative_works: use graph DW when its top item is more cited than API DW;
-      //                   fall back to API DW for papers with few citations.
+      // prior_works:      prefer API (SS /references, all refs sorted by citation count)
+      //                   fall back to graph data if API returned nothing (rate-limited)
+      // derivative_works: prefer graph DW (similarity-filtered, higher-cited) over SS
+      //                   /citations which returns newest-first for popular papers
+      const bestPW = apiPW.length > 0 ? apiPW : graphWorks.prior;
       const bestDW =
-        graphDW.length > 0 && (graphDW[0]?.citation_count || 0) > (apiDW[0]?.citation_count || 0)
-          ? graphDW
+        graphWorks.derivative.length > 0 &&
+        (graphWorks.derivative[0]?.citation_count || 0) > (apiDW[0]?.citation_count || 0)
+          ? graphWorks.derivative
           : apiDW;
 
-      const merged = { prior_works: apiPW, derivative_works: bestDW };
+      const merged = { prior_works: bestPW, derivative_works: bestDW };
       priorDerivativeCacheRef.current.set(seedPaperId, merged);
       startTransition(() => {
         setPriorDerivative(merged);

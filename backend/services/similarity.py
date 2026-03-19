@@ -338,9 +338,13 @@ def _extract_prior_derivative(
         if pid == seed_paper_id or not pid or not paper.get("title"):
             continue
         if pid in ref_ids:
-            prior.append(paper_to_work_item(paper))
+            item = paper_to_work_item(paper)
+            if item:
+                prior.append(item)
         elif pid in cite_ids:
-            derivative.append(paper_to_work_item(paper))
+            item = paper_to_work_item(paper)
+            if item:
+                derivative.append(item)
 
     prior.sort(key=lambda x: x.citation_count, reverse=True)
     derivative.sort(key=lambda x: x.citation_count, reverse=True)
