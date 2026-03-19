@@ -275,8 +275,8 @@ export default function GraphCanvas({
         tip.querySelector(".tip-year").textContent = n.year ? String(n.year) : "";
         tip.querySelector(".tip-cites").textContent = `${(n.citation_count || 0).toLocaleString()} ${t("rail.citationsSuffix")}`;
         tip.style.display = "block";
-        tip.style.left = `${event.clientX + 8}px`;
-        tip.style.top  = `${event.clientY + 16}px`;
+        tip.style.left = `${event.clientX + 4}px`;
+        tip.style.top  = `${event.clientY + 4}px`;
       })
       .on("mousemove", (event) => {
         const tip = tooltipRef.current;
