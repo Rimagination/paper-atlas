@@ -60,13 +60,14 @@ function positionTooltip(tip, targetElement) {
     return;
   }
 
-  const offsetX = 8;
-  const offsetY = 8;
+  const offsetX = 4;
+  const offsetY = 0;
   const margin = 12;
   const rect = tip.getBoundingClientRect();
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const targetRect = targetElement?.getBoundingClientRect?.();
+  const anchorElement = targetElement?.querySelector?.("circle") || targetElement;
+  const targetRect = anchorElement?.getBoundingClientRect?.();
 
   if (!targetRect) {
     return;
