@@ -1,5 +1,6 @@
-import { useDeferredValue } from "react";
+import { useDeferredValue, useState } from "react";
 import { useScanSciAuth } from "./auth";
+import FavoritesPanel from "./components/FavoritesPanel";
 import GraphCanvas from "./components/GraphCanvas";
 import PaperPanel from "./components/PaperPanel";
 import PaperRail from "./components/PaperRail";
@@ -157,7 +158,18 @@ function ErrorState({ error, t }) {
 
 export default function App() {
   const { t } = useLanguage();
-  const { isFavorite, startLogin, status: authStatus, toggleFavorite, user: authUser } = useScanSciAuth();
+  const {
+    favoriteItems,
+    favoriteItemsStatus,
+    favorites,
+    isFavorite,
+    loadFavoriteItems,
+    startLogin,
+    status: authStatus,
+    toggleFavorite,
+    user: authUser,
+  } = useScanSciAuth();
+  const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const {
     activeGraphSeedId,
     clearSelection,
@@ -183,6 +195,20 @@ export default function App() {
   const fallbackSelectedPaper =
     selectedPaper || deferredGraphData?.nodes?.find((node) => node.id === selectedPaperId) || null;
 
+  async function handleOpenFavorites() {
+    setIsFavoritesOpen(true);
+    if (authStatus === "authenticated") {
+      await loadFavoriteItems();
+    }
+  }
+
+  async function handleOpenFavoritePaper(paperId, title) {
+    setIsFavoritesOpen(false);
+    if (paperId) {
+      await loadGraph(paperId, { title: title || "" });
+    }
+  }
+
   return (
     <div className="min-h-screen overflow-x-hidden">
       <ScanSciGlobalNav />
@@ -198,6 +224,18 @@ export default function App() {
           authStatus={authStatus}
           authUser={authUser}
           onLogin={startLogin}
+          onOpenFavorites={handleOpenFavorites}
+          favoriteCount={favorites.size}
+        />
+
+        <FavoritesPanel
+          isOpen={isFavoritesOpen}
+          isLoading={favoriteItemsStatus === "loading"}
+          items={favoriteItems}
+          authStatus={authStatus}
+          onClose={() => setIsFavoritesOpen(false)}
+          onLogin={startLogin}
+          onOpenMap={handleOpenFavoritePaper}
         />
 
         <div className="flex-1 min-h-0 px-3 pb-3 sm:px-4">

@@ -28,6 +28,13 @@ const messages = {
       signIn: "Sign in",
       synced: "ScanSci synced"
     },
+    favorites: {
+      title: "Saved papers",
+      hint: "Your saved papers stay here so you can reopen the graph or jump to the source later.",
+      signIn: "Sign in to view saved papers",
+      empty: "No saved papers yet.",
+      openMap: "Open map"
+    },
     toolbar: {
       currentMap: "Current map",
       citationMap: "Citation map",
@@ -176,6 +183,13 @@ const messages = {
       checking: "正在检查 ScanSci 登录状态...",
       signIn: "登录",
       synced: "已同步 ScanSci"
+    },
+    favorites: {
+      title: "收藏论文",
+      hint: "你收藏的论文会保存在这里，方便稍后回到图谱或直接打开原文。",
+      signIn: "登录后查看收藏",
+      empty: "还没有收藏论文。",
+      openMap: "打开图谱"
     },
     toolbar: {
       currentMap: "当前图谱",

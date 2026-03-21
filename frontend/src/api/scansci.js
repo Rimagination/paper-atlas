@@ -52,6 +52,13 @@ export async function getScanSciMe() {
   return response.data;
 }
 
+export async function getScanSciFavoriteItems() {
+  const response = await scansciClient.get("/actions", {
+    params: { type: "favorite" },
+  });
+  return response.data;
+}
+
 export async function toggleScanSciFavorite(appId, payload) {
   const response = await scansciClient.post("/actions", {
     app_id: appId,

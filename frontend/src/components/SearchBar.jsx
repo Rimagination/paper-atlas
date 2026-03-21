@@ -106,6 +106,23 @@ function IdentityBadge({ authStatus, user, onLogin, t }) {
   );
 }
 
+function FavoritesButton({ count, onClick, t }) {
+  const label = readLabel(t("favorites.title"), "收藏论文");
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+    >
+      <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="M6 3.5h8a1 1 0 0 1 1 1V17l-5-3-5 3V4.5a1 1 0 0 1 1-1Z" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {label}
+      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">{count}</span>
+    </button>
+  );
+}
+
 function MetaDot() {
   return (
     <span aria-hidden="true" className="text-slate-300">
@@ -132,7 +149,9 @@ export default function SearchBar({
   status,
   authStatus,
   authUser,
-  onLogin
+  onLogin,
+  onOpenFavorites,
+  favoriteCount = 0
 }) {
   const { t } = useLanguage();
   const { theme } = useTheme();
@@ -227,6 +246,7 @@ export default function SearchBar({
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <FavoritesButton count={favoriteCount} onClick={onOpenFavorites} t={t} />
             <IdentityBadge authStatus={authStatus} user={authUser} onLogin={onLogin} t={t} />
             <LanguageSwitch />
           </div>
