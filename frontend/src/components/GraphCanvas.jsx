@@ -55,6 +55,33 @@ function resolveYearRange(nodes = []) {
   };
 }
 
+function positionTooltip(tip, event) {
+  if (!tip) {
+    return;
+  }
+
+  const offsetX = 8;
+  const offsetY = 8;
+  const margin = 12;
+  const rect = tip.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  let left = event.clientX + offsetX;
+  let top = event.clientY + offsetY;
+
+  if (left + rect.width + margin > viewportWidth) {
+    left = viewportWidth - rect.width - margin;
+  }
+
+  if (top + rect.height + margin > viewportHeight) {
+    top = viewportHeight - rect.height - margin;
+  }
+
+  tip.style.left = `${Math.max(margin, left)}px`;
+  tip.style.top = `${Math.max(margin, top)}px`;
+}
+
 export default function GraphCanvas({
   data,
   onClearSelection,
@@ -275,12 +302,11 @@ export default function GraphCanvas({
         tip.querySelector(".tip-year").textContent = n.year ? String(n.year) : "";
         tip.querySelector(".tip-cites").textContent = `${(n.citation_count || 0).toLocaleString()} ${t("rail.citationsSuffix")}`;
         tip.style.display = "block";
-        tip.style.left = `${event.clientX + 4}px`;
-        tip.style.top  = `${event.clientY + 4}px`;
+        positionTooltip(tip, event);
       })
       .on("mousemove", (event) => {
         const tip = tooltipRef.current;
-        if (tip) { tip.style.left = `${event.clientX + 14}px`; tip.style.top = `${event.clientY - 52}px`; }
+        positionTooltip(tip, event);
       })
       .on("mouseout", () => {
         updateVisualState();
