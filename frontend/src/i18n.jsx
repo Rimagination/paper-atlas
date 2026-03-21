@@ -23,6 +23,11 @@ const messages = {
       zh: "中文",
       en: "EN"
     },
+    auth: {
+      checking: "Checking ScanSci session...",
+      signIn: "Sign in",
+      synced: "ScanSci synced"
+    },
     toolbar: {
       currentMap: "Current map",
       citationMap: "Citation map",
@@ -114,6 +119,9 @@ const messages = {
       abstract: "Abstract",
       showLess: "Show less",
       readMore: "Read more",
+      save: "Save paper",
+      saved: "Saved",
+      signInToSave: "Sign in to save",
       useAsOrigin: "Use as origin",
       openOriginal: "Open original",
       emptyHint: "Select any paper from the graph or list to inspect its abstract, metadata, and source links.",
@@ -163,6 +171,11 @@ const messages = {
     language: {
       zh: "中文",
       en: "EN"
+    },
+    auth: {
+      checking: "正在检查 ScanSci 登录状态...",
+      signIn: "登录",
+      synced: "已同步 ScanSci"
     },
     toolbar: {
       currentMap: "当前图谱",

@@ -60,6 +60,52 @@ function LanguageSwitch() {
   );
 }
 
+function readLabel(value, fallback) {
+  return typeof value === "string" && value.includes(".") ? fallback : value;
+}
+
+function IdentityBadge({ authStatus, user, onLogin, t }) {
+  const checkingLabel = readLabel(t("auth.checking"), "Checking ScanSci session...");
+  const signInLabel = readLabel(t("auth.signIn"), "登录");
+  const syncedLabel = readLabel(t("auth.synced"), "已同步 ScanSci");
+
+  if (authStatus === "authenticated" && user) {
+    return (
+      <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1.5">
+        {user.avatar_url ? (
+          <img src={user.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover" />
+        ) : (
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white">
+            {(user.login || user.email || "S").slice(0, 1).toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0">
+          <div className="max-w-[8rem] truncate text-[11px] font-semibold text-slate-900">{user.login || user.email}</div>
+          <div className="text-[10px] text-slate-400">{syncedLabel}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (authStatus === "loading") {
+    return (
+      <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400">
+        {checkingLabel}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onLogin}
+      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+    >
+      {signInLabel}
+    </button>
+  );
+}
+
 function MetaDot() {
   return (
     <span aria-hidden="true" className="text-slate-300">
@@ -83,7 +129,10 @@ export default function SearchBar({
   results,
   isSearching,
   searchError,
-  status
+  status,
+  authStatus,
+  authUser,
+  onLogin
 }) {
   const { t } = useLanguage();
   const { theme } = useTheme();
@@ -178,6 +227,7 @@ export default function SearchBar({
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <IdentityBadge authStatus={authStatus} user={authUser} onLogin={onLogin} t={t} />
             <LanguageSwitch />
           </div>
         </div>

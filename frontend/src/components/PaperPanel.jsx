@@ -68,6 +68,10 @@ function IconLink() {
   );
 }
 
+function readLabel(value, fallback) {
+  return typeof value === "string" && value.includes(".") ? fallback : value;
+}
+
 function IconCrossref() {
   return (
     <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
@@ -75,6 +79,18 @@ function IconCrossref() {
       <circle cx="14.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
       <circle cx="17" cy="10" r="1.5" fill="currentColor" stroke="none" />
       <circle cx="14.5" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function FavoriteIcon({ active = false }) {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path
+        d="M10 16.5 3.8 10.3a3.9 3.9 0 0 1 5.5-5.5L10 5.5l.7-.7a3.9 3.9 0 1 1 5.5 5.5L10 16.5Z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -125,10 +141,21 @@ function SourceLink({ link }) {
   );
 }
 
-export default function PaperPanel({ isOpen, isLoading, onClose, onRecenter, paper }) {
+export default function PaperPanel({
+  isOpen,
+  isLoading,
+  onClose,
+  onRecenter,
+  paper,
+  isFavorite,
+  authStatus,
+  onLogin,
+  onToggleFavorite,
+}) {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const [expanded, setExpanded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setExpanded(false);
@@ -148,6 +175,29 @@ export default function PaperPanel({ isOpen, isLoading, onClose, onRecenter, pap
     googleScholar: t("links.googleScholar"),
     publisher: t("links.publisher")
   });
+  const saveLabel = readLabel(t("panel.save"), "收藏论文");
+  const savedLabel = readLabel(t("panel.saved"), "已收藏");
+  const signInToSaveLabel = readLabel(t("panel.signInToSave"), "登录后收藏");
+
+  async function handleFavorite() {
+    if (!paper) {
+      return;
+    }
+
+    if (authStatus !== "authenticated") {
+      onLogin?.();
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onToggleFavorite?.(paper);
+    } catch (_) {
+      // Keep the panel responsive even if the upstream auth service is temporarily unavailable.
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <>
@@ -251,13 +301,31 @@ export default function PaperPanel({ isOpen, isLoading, onClose, onRecenter, pap
               </div>
 
               {/* ── Actions ── */}
-              <button
-                type="button"
-                onClick={() => paperId && onRecenter(paperId)}
-                className="rounded-[16px] border border-slate-900 bg-slate-900 px-4 py-2.5 text-[13px] font-medium text-white transition hover:bg-slate-800"
-              >
-                {t("panel.useAsOrigin")}
-              </button>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleFavorite}
+                  disabled={isSaving}
+                  className="inline-flex items-center justify-center gap-2 rounded-[16px] border px-4 py-2.5 text-[13px] font-medium transition"
+                  style={{
+                    borderColor: isFavorite ? theme.colors[0] + "44" : "#e2e8f0",
+                    background: isFavorite ? theme.colors[0] + "10" : "#ffffff",
+                    color: isFavorite ? theme.colors[0] : "#334155",
+                    opacity: isSaving ? 0.72 : 1,
+                  }}
+                >
+                  <FavoriteIcon active={isFavorite} />
+                  {isFavorite ? savedLabel : authStatus === "authenticated" ? saveLabel : signInToSaveLabel}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => paperId && onRecenter(paperId)}
+                  className="rounded-[16px] border border-slate-900 bg-slate-900 px-4 py-2.5 text-[13px] font-medium text-white transition hover:bg-slate-800"
+                >
+                  {t("panel.useAsOrigin")}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="mt-4 rounded-[18px] border border-dashed border-slate-200 bg-white/70 p-6 text-sm leading-8 text-slate-500">

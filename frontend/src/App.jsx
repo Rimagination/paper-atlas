@@ -1,4 +1,5 @@
 import { useDeferredValue } from "react";
+import { useScanSciAuth } from "./auth";
 import GraphCanvas from "./components/GraphCanvas";
 import PaperPanel from "./components/PaperPanel";
 import PaperRail from "./components/PaperRail";
@@ -156,6 +157,7 @@ function ErrorState({ error, t }) {
 
 export default function App() {
   const { t } = useLanguage();
+  const { isFavorite, startLogin, status: authStatus, toggleFavorite, user: authUser } = useScanSciAuth();
   const {
     activeGraphSeedId,
     clearSelection,
@@ -193,6 +195,9 @@ export default function App() {
           isSearching={status === "searching"}
           searchError={searchError}
           status={status}
+          authStatus={authStatus}
+          authUser={authUser}
+          onLogin={startLogin}
         />
 
         <div className="flex-1 min-h-0 px-3 pb-3 sm:px-4">
@@ -249,6 +254,10 @@ export default function App() {
                 onClose={clearSelection}
                 onRecenter={recenter}
                 paper={fallbackSelectedPaper}
+                isFavorite={isFavorite(fallbackSelectedPaper)}
+                authStatus={authStatus}
+                onLogin={startLogin}
+                onToggleFavorite={toggleFavorite}
               />
             </div>
           ) : null}
