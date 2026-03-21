@@ -55,8 +55,8 @@ function resolveYearRange(nodes = []) {
   };
 }
 
-function positionTooltip(tip, targetElement) {
-  if (!tip) {
+function positionTooltip(tip, frameElement, targetElement) {
+  if (!tip || !frameElement) {
     return;
   }
 
@@ -64,8 +64,7 @@ function positionTooltip(tip, targetElement) {
   const offsetY = 0;
   const margin = 12;
   const rect = tip.getBoundingClientRect();
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
+  const frameRect = frameElement.getBoundingClientRect();
   const anchorElement = targetElement?.querySelector?.("circle") || targetElement;
   const targetRect = anchorElement?.getBoundingClientRect?.();
 
@@ -73,15 +72,15 @@ function positionTooltip(tip, targetElement) {
     return;
   }
 
-  let left = targetRect.right + offsetX;
-  let top = targetRect.top + targetRect.height / 2 - rect.height / 2;
+  let left = targetRect.right - frameRect.left + offsetX;
+  let top = targetRect.top - frameRect.top + targetRect.height / 2 - rect.height / 2;
 
-  if (left + rect.width + margin > viewportWidth) {
-    left = targetRect.left - rect.width - offsetX;
+  if (left + rect.width + margin > frameRect.width) {
+    left = targetRect.left - frameRect.left - rect.width - offsetX;
   }
 
-  if (top + rect.height + margin > viewportHeight) {
-    top = viewportHeight - rect.height - margin;
+  if (top + rect.height + margin > frameRect.height) {
+    top = frameRect.height - rect.height - margin;
   }
 
   tip.style.left = `${Math.max(margin, left)}px`;
@@ -308,11 +307,11 @@ export default function GraphCanvas({
         tip.querySelector(".tip-year").textContent = n.year ? String(n.year) : "";
         tip.querySelector(".tip-cites").textContent = `${(n.citation_count || 0).toLocaleString()} ${t("rail.citationsSuffix")}`;
         tip.style.display = "block";
-        positionTooltip(tip, event.currentTarget);
+        positionTooltip(tip, frameRef.current, event.currentTarget);
       })
       .on("mousemove", (event) => {
         const tip = tooltipRef.current;
-        positionTooltip(tip, event.currentTarget);
+        positionTooltip(tip, frameRef.current, event.currentTarget);
       })
       .on("mouseout", () => {
         updateVisualState();
@@ -428,7 +427,7 @@ export default function GraphCanvas({
         {/* Hover tooltip – positioned via direct DOM in d3 handlers */}
         <div
           ref={tooltipRef}
-          className="pointer-events-none fixed z-50 hidden max-w-[260px] rounded-xl bg-white/95 px-3 py-2 backdrop-blur-md"
+          className="pointer-events-none absolute z-50 hidden max-w-[260px] rounded-xl bg-white/95 px-3 py-2 backdrop-blur-md"
           style={{
             border: `1px solid ${theme.colors[1]}28`,
             boxShadow: `0 8px 28px ${theme.colors[1]}22`,
