@@ -8,7 +8,7 @@ from urllib.parse import quote
 import httpx
 
 from backend.config import Settings
-from backend.models.schemas import GraphNode, PaperDetail, PaperSummary, WorkItem
+from backend.models.schemas import GraphNode, PaperDetail, PaperSummary, SourceLink, WorkItem
 
 SEARCH_FIELDS = "paperId,title,authors,year,citationCount,abstract,venue,externalIds,url"
 DETAIL_FIELDS = (
@@ -57,7 +57,7 @@ class SemanticScholarClient:
             "/paper/search",
             params={"query": query, "fields": SEARCH_FIELDS, "limit": limit},
         )
-        return payload.get("data", [])
+        return [self._mark_source(item) for item in payload.get("data", [])]
 
     async def get_paper(self, paper_id: str, fields: str = DETAIL_FIELDS) -> dict[str, Any]:
         if ":" not in paper_id:
@@ -67,7 +67,8 @@ class SemanticScholarClient:
             raise SemanticScholarNotFoundError("Paper not found in Semantic Scholar.")
 
         encoded_id = quote(paper_id, safe="")
-        return await self._request("GET", f"/paper/{encoded_id}", params={"fields": fields})
+        payload = await self._request("GET", f"/paper/{encoded_id}", params={"fields": fields})
+        return self._mark_source(payload)
 
     async def get_paper_references(self, paper_id: str, limit: int = 100) -> list[dict[str, Any]]:
         """Fetch references via the dedicated /references endpoint (returns all, sorted as-is)."""
@@ -113,7 +114,7 @@ class SemanticScholarClient:
         for start in range(0, len(ids), 500):
             chunk = ids[start : start + 500]
             payload = await self._request("POST", "/paper/batch", params={"fields": fields}, json={"ids": chunk})
-            results.extend(item for item in payload if item and item.get("paperId"))
+            results.extend(self._mark_source(item) for item in payload if item and item.get("paperId"))
         return results
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
@@ -157,6 +158,12 @@ class SemanticScholarClient:
     def _enter_cooldown(self) -> None:
         self.unavailable_until = time.monotonic() + self.cooldown_seconds
 
+    @staticmethod
+    def _mark_source(paper: dict[str, Any]) -> dict[str, Any]:
+        if not paper:
+            return paper
+        return {**paper, "source": "semantic"}
+
 
 def normalize_authors(paper: dict[str, Any]) -> list[str]:
     authors = paper.get("authors") or []
@@ -197,6 +204,8 @@ def paper_to_detail(paper: dict[str, Any]) -> PaperDetail:
         doi=resolve_doi(paper),
         url=resolve_url(paper),
         reference_count=len(paper.get("references") or []),
+        external_ids=paper.get("externalIds") or {},
+        source_links=[SourceLink.model_validate(item) for item in (paper.get("sourceLinks") or [])],
     )
 
 

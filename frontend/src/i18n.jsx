@@ -132,6 +132,8 @@ const messages = {
       doi: "DOI",
       openSource: "Open source",
       openAlex: "OpenAlex",
+      crossref: "Crossref",
+      publisher: "Publisher",
       frontiers: "Frontiers",
       semanticScholar: "Semantic Scholar",
       googleScholar: "Google Scholar"
@@ -267,6 +269,8 @@ const messages = {
       doi: "DOI",
       openSource: "原文",
       openAlex: "OpenAlex",
+      crossref: "Crossref",
+      publisher: "出版页",
       frontiers: "Frontiers",
       semanticScholar: "Semantic Scholar",
       googleScholar: "谷歌学术"

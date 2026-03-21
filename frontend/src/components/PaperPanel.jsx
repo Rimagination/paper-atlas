@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { buildPaperLinks, resolvePaperUrl } from "../utils/papers";
+import { buildPaperLinks } from "../utils/papers";
 import { useLanguage } from "../i18n";
 import { useTheme } from "../theme";
 
@@ -68,11 +68,23 @@ function IconLink() {
   );
 }
 
+function IconCrossref() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+      <path d="M4 6.5h6.5M4 10h9M4 13.5h6.5" strokeLinecap="round" />
+      <circle cx="14.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="17" cy="10" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="14.5" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 const ICON_MAP = {
   doi: <IconDOI />,
   semantic: <IconSemantic />,
   scholar: <IconScholar />,
   openalex: <IconOpenAlex />,
+  crossref: <IconCrossref />,
   link: <IconLink />
 };
 
@@ -130,9 +142,11 @@ export default function PaperPanel({ isOpen, isLoading, onClose, onRecenter, pap
     doi: t("links.doi"),
     openSource: t("links.openSource"),
     openAlex: t("links.openAlex"),
+    crossref: t("links.crossref"),
     frontiers: t("links.frontiers"),
     semanticScholar: t("links.semanticScholar"),
-    googleScholar: t("links.googleScholar")
+    googleScholar: t("links.googleScholar"),
+    publisher: t("links.publisher")
   });
 
   return (

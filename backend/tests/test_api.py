@@ -36,7 +36,7 @@ def test_search_returns_title_matches(client):
         )
     )
 
-    response = client.get("/search", params={"q": "attention"})
+    response = client.get("/api/search", params={"q": "attention"})
 
     assert response.status_code == 200
     assert route.called
@@ -69,7 +69,7 @@ def test_search_falls_back_when_doi_lookup_misses(client):
         )
     )
 
-    response = client.get("/search", params={"q": "10.1000/xyz123"})
+    response = client.get("/api/search", params={"q": "10.1000/xyz123"})
 
     assert response.status_code == 200
     assert doi_route.called
@@ -98,9 +98,23 @@ def test_paper_detail_route_maps_fields_and_uses_cache(client):
             ],
         )
     )
+    respx.get("https://api.openalex.org/works").mock(return_value=httpx.Response(200, json={"results": []}))
+    respx.get("https://api.crossref.org/works/10.1000%2Fcache").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "message": {
+                    "DOI": "10.1000/cache",
+                    "title": ["Cached Detail Paper"],
+                    "container-title": ["NeurIPS"],
+                    "URL": "https://doi.org/10.1000/cache",
+                }
+            },
+        )
+    )
 
-    first = client.get("/paper/paper-3")
-    second = client.get("/paper/paper-3")
+    first = client.get("/api/paper/paper-3")
+    second = client.get("/api/paper/paper-3")
 
     assert first.status_code == 200
     assert second.status_code == 200
@@ -132,8 +146,10 @@ def test_paper_detail_route_retries_with_fresh_semantic_client_on_transient_fail
             ),
         ]
     )
+    respx.get("https://api.openalex.org/works").mock(return_value=httpx.Response(200, json={"results": []}))
+    respx.get("https://api.crossref.org/works").mock(return_value=httpx.Response(200, json={"message": {"items": []}}))
 
-    response = client.get("/paper/paper-4")
+    response = client.get("/api/paper/paper-4")
 
     assert response.status_code == 200
     assert route.call_count == 2
@@ -211,7 +227,7 @@ def test_graph_route_returns_graph_response(client):
         )
     )
 
-    response = client.get("/graph/seed")
+    response = client.get("/api/graph/seed")
 
     assert response.status_code == 200
     assert batch_route.called
@@ -250,7 +266,7 @@ def test_search_falls_back_to_openalex_on_rate_limit(client):
         )
     )
 
-    response = client.get("/search", params={"q": "OOA-LightGBM"})
+    response = client.get("/api/search", params={"q": "OOA-LightGBM"})
 
     assert response.status_code == 200
     assert openalex_route.called
@@ -287,7 +303,7 @@ def test_search_prefers_fresh_semantic_exact_match_for_full_title(client):
         return_value=httpx.Response(200, json={"results": []})
     )
 
-    response = client.get("/search", params={"q": query})
+    response = client.get("/api/search", params={"q": query})
 
     assert response.status_code == 200
     assert semantic_route.call_count == 2
@@ -378,9 +394,22 @@ def test_openalex_exact_match_uses_semantic_arxiv_lookup(client):
             },
         )
     )
+    respx.get("https://api.crossref.org/works/10.48550%2FarXiv.1706.03762").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "message": {
+                    "DOI": "10.48550/arXiv.1706.03762",
+                    "title": ["Attention Is All You Need"],
+                    "container-title": ["Neural Information Processing Systems"],
+                    "URL": "https://doi.org/10.48550/arXiv.1706.03762",
+                }
+            },
+        )
+    )
 
-    search_response = client.get("/search", params={"q": "Attention Is All You Need"})
-    detail_response = client.get("/paper/W2626778328")
+    search_response = client.get("/api/search", params={"q": "Attention Is All You Need"})
+    detail_response = client.get("/api/paper/W2626778328")
 
     assert search_response.status_code == 200
     assert detail_response.status_code == 200
@@ -434,7 +463,7 @@ def test_search_returns_exact_frontiers_match_for_full_title(client):
         )
     )
 
-    response = client.get("/search", params={"q": query})
+    response = client.get("/api/search", params={"q": query})
 
     assert response.status_code == 200
     assert frontiers_route.called
@@ -537,8 +566,21 @@ def test_graph_route_falls_back_to_openalex(client):
             )
         ]
     )
+    respx.get("https://api.crossref.org/works/10.1000%2Fopenalex").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "message": {
+                    "DOI": "10.1000/openalex",
+                    "title": ["OOA-LightGBM"],
+                    "container-title": ["Earth Systems and Environment"],
+                    "URL": "https://doi.org/10.1000/openalex",
+                }
+            },
+        )
+    )
 
-    response = client.get("/graph/W7134227096")
+    response = client.get("/api/graph/W7134227096")
 
     assert response.status_code == 200
     assert openalex_seed_route.called
@@ -635,9 +677,22 @@ def test_openalex_exact_match_is_repaired_with_dblp_when_semantic_is_unavailable
             },
         )
     )
+    respx.get("https://api.crossref.org/works/10.48550%2FarXiv.1706.03762").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "message": {
+                    "DOI": "10.48550/arXiv.1706.03762",
+                    "title": ["Attention Is All You Need"],
+                    "container-title": ["Neural Information Processing Systems"],
+                    "URL": "https://doi.org/10.48550/arXiv.1706.03762",
+                }
+            },
+        )
+    )
 
-    search_response = client.get("/search", params={"q": "Attention Is All You Need"})
-    detail_response = client.get("/paper/W2626778328")
+    search_response = client.get("/api/search", params={"q": "Attention Is All You Need"})
+    detail_response = client.get("/api/paper/W2626778328")
 
     assert search_response.status_code == 200
     assert detail_response.status_code == 200
@@ -729,7 +784,7 @@ def test_graph_route_builds_topic_fallback_for_frontiers_only_paper(client):
         )
     )
 
-    response = client.get("/graph/FRONTIERS:1736773")
+    response = client.get("/api/graph/FRONTIERS:1736773")
 
     assert response.status_code == 200
     assert frontiers_route.called
@@ -774,3 +829,119 @@ def test_cache_service_respects_ttl():
         await cache.close()
 
     asyncio.run(runner())
+
+
+@respx.mock
+def test_api_paper_detail_returns_multi_database_source_links(client):
+    respx.post("https://api.semanticscholar.org/graph/v1/paper/batch").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {
+                    "paperId": "paper-links",
+                    "title": "Attention Is All You Need",
+                    "authors": [{"name": "Ashish Vaswani"}],
+                    "year": 2017,
+                    "citationCount": 1000,
+                    "abstract": "Transformer paper",
+                    "venue": "NeurIPS",
+                    "externalIds": {"DOI": "10.48550/arXiv.1706.03762"},
+                    "url": "https://www.semanticscholar.org/paper/paper-links",
+                    "references": [{"paperId": "ref-1"}],
+                }
+            ],
+        )
+    )
+    respx.get("https://api.openalex.org/works").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "results": [
+                    {
+                        "id": "https://openalex.org/W2741809807",
+                        "display_name": "Attention Is All You Need",
+                        "publication_year": 2017,
+                        "cited_by_count": 1000,
+                        "authorships": [{"author": {"display_name": "Ashish Vaswani"}}],
+                        "primary_location": {
+                            "landing_page_url": "https://proceedings.neurips.cc/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html",
+                            "source": {"display_name": "NeurIPS"},
+                        },
+                        "ids": {"doi": "https://doi.org/10.48550/arXiv.1706.03762"},
+                        "doi": "https://doi.org/10.48550/arXiv.1706.03762",
+                        "referenced_works": [],
+                        "related_works": [],
+                    }
+                ]
+            },
+        )
+    )
+    respx.get("https://api.crossref.org/works/10.48550%2FarXiv.1706.03762").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "message": {
+                    "DOI": "10.48550/arXiv.1706.03762",
+                    "title": ["Attention Is All You Need"],
+                    "container-title": ["Neural Information Processing Systems"],
+                    "URL": "https://doi.org/10.48550/arXiv.1706.03762",
+                }
+            },
+        )
+    )
+
+    response = client.get("/api/paper/paper-links")
+
+    assert response.status_code == 200
+    kinds = [link["kind"] for link in response.json()["source_links"]]
+    assert "doi" in kinds
+    assert "semantic_scholar" in kinds
+    assert "openalex" in kinds
+    assert "crossref" in kinds
+    assert "google_scholar" in kinds
+
+
+@respx.mock
+def test_api_paper_detail_uses_crossref_exact_title_when_doi_missing(client):
+    respx.post("https://api.semanticscholar.org/graph/v1/paper/batch").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {
+                    "paperId": "paper-no-doi",
+                    "title": "The Annotated Transformer",
+                    "authors": [{"name": "Harvard NLP"}],
+                    "year": 2018,
+                    "citationCount": 120,
+                    "abstract": "Implementation notes",
+                    "venue": "Blog",
+                    "references": [{"paperId": "ref-1"}],
+                }
+            ],
+        )
+    )
+    respx.get("https://api.openalex.org/works").mock(return_value=httpx.Response(200, json={"results": []}))
+    respx.get("https://api.crossref.org/works").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "message": {
+                    "items": [
+                        {
+                            "DOI": "10.5555/annotated-transformer",
+                            "title": ["The Annotated Transformer"],
+                            "container-title": ["Example Proceedings"],
+                            "URL": "https://doi.org/10.5555/annotated-transformer",
+                        }
+                    ]
+                }
+            },
+        )
+    )
+
+    response = client.get("/api/paper/paper-no-doi")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["doi"] == "10.5555/annotated-transformer"
+    assert any(link["kind"] == "crossref" for link in payload["source_links"])

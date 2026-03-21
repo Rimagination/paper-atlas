@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.config import Settings, get_settings
 from backend.routers.papers import router as papers_router
 from backend.services.cache import CacheService
+from backend.services.crossref import CrossrefClient
 from backend.services.dblp import DblpClient
 from backend.services.frontiers import FrontiersClient
 from backend.services.openalex import OpenAlexClient
@@ -34,6 +35,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
             semantic_client = SemanticScholarClient(app_settings)
             openalex_client = OpenAlexClient(app_settings)
+            crossref_client = CrossrefClient(app_settings)
             frontiers_client = FrontiersClient(app_settings)
             dblp_client = DblpClient(app_settings)
             logger.info("Data clients initialized")
@@ -42,6 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 app_settings,
                 semantic_client,
                 openalex_client,
+                crossref_client,
                 frontiers_client,
                 dblp_client,
             )

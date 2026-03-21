@@ -3,7 +3,10 @@ from __future__ import annotations
 import asyncio
 import re
 from typing import Any
+from urllib.parse import quote
 
+from backend.models.schemas import SourceLink
+from backend.services.crossref import CrossrefClient, CrossrefError, CrossrefNotFoundError
 from backend.services.dblp import DblpClient, DblpError
 from backend.services.frontiers import FrontiersClient, FrontiersError, FrontiersNotFoundError
 from backend.services.openalex import OpenAlexClient, OpenAlexError, OpenAlexNotFoundError
@@ -31,18 +34,21 @@ class PaperDataClient:
         settings,
         semantic_client: SemanticScholarClient,
         openalex_client: OpenAlexClient,
+        crossref_client: CrossrefClient,
         frontiers_client: FrontiersClient,
         dblp_client: DblpClient,
     ) -> None:
         self.settings = settings
         self.semantic_client = semantic_client
         self.openalex_client = openalex_client
+        self.crossref_client = crossref_client
         self.frontiers_client = frontiers_client
         self.dblp_client = dblp_client
 
     async def close(self) -> None:
         await self.semantic_client.close()
         await self.openalex_client.close()
+        await self.crossref_client.close()
         await self.frontiers_client.close()
         await self.dblp_client.close()
 
@@ -94,7 +100,7 @@ class PaperDataClient:
         if prefers_openalex:
             try:
                 paper = await self.openalex_client.get_paper(paper_id)
-                return await self._repair_openalex_paper(paper)
+                return await self._enrich_paper(await self._repair_openalex_paper(paper))
             except OpenAlexNotFoundError:
                 pass
             except OpenAlexError as exc:
@@ -102,14 +108,14 @@ class PaperDataClient:
 
         semantic_error: SemanticScholarError | None = None
         try:
-            return await self.semantic_client.get_paper(paper_id)
+            return await self._enrich_paper(await self.semantic_client.get_paper(paper_id))
         except SemanticScholarNotFoundError:
             pass
         except SemanticScholarError as exc:
             semantic_error = exc
             if not prefers_openalex:
                 try:
-                    return await self._get_paper_with_fresh_semantic_client(paper_id)
+                    return await self._enrich_paper(await self._get_paper_with_fresh_semantic_client(paper_id))
                 except SemanticScholarNotFoundError:
                     pass
                 except SemanticScholarError as retry_exc:
@@ -117,13 +123,13 @@ class PaperDataClient:
 
         try:
             paper = await self.openalex_client.get_paper(paper_id)
-            return await self._repair_openalex_paper(paper)
+            return await self._enrich_paper(await self._repair_openalex_paper(paper))
         except OpenAlexNotFoundError as exc:
             if semantic_error and not prefers_openalex:
                 raise PaperDataError(str(semantic_error)) from semantic_error
             if _is_frontiers_doi(paper_id):
                 try:
-                    return await self.frontiers_client.get_paper_by_doi(paper_id.removeprefix("DOI:"))
+                    return await self._enrich_paper(await self.frontiers_client.get_paper_by_doi(paper_id.removeprefix("DOI:")))
                 except FrontiersNotFoundError:
                     raise PaperDataNotFoundError(str(exc)) from exc
                 except FrontiersError as frontiers_exc:
@@ -399,9 +405,137 @@ class PaperDataClient:
             merged["citationCount"] = citation_count
         return merged
 
+    async def _enrich_paper(self, paper: dict) -> dict:
+        semantic_match = await self._resolve_semantic_match(paper)
+        openalex_match = await self._resolve_openalex_match(paper)
+        crossref_match = await self._resolve_crossref_match(paper)
+
+        enriched = dict(paper)
+        for candidate in (crossref_match, openalex_match, semantic_match):
+            if candidate:
+                enriched = self._merge_metadata_override(enriched, candidate)
+
+        enriched["sourceLinks"] = [
+            link.model_dump() for link in self._build_source_links(enriched, semantic_match, openalex_match, crossref_match)
+        ]
+        return enriched
+
+    async def _resolve_semantic_match(self, paper: dict) -> dict | None:
+        if paper.get("source") == "semantic":
+            return paper
+
+        title = (paper.get("title") or "").strip()
+        if not _should_enrich_by_title(title):
+            return None
+
+        semantic_match = await self._find_exact_semantic_match(title)
+        if semantic_match:
+            return semantic_match
+
+        return await self._find_semantic_match_from_external_ids(paper, title)
+
+    async def _resolve_openalex_match(self, paper: dict) -> dict | None:
+        if paper.get("source") == "openalex":
+            return paper
+
+        doi = ((paper.get("externalIds") or {}).get("DOI") or "").strip()
+        if doi:
+            try:
+                return await self.openalex_client.get_paper(f"DOI:{doi}")
+            except (OpenAlexError, OpenAlexNotFoundError):
+                pass
+
+        title = (paper.get("title") or "").strip()
+        if not _should_enrich_by_title(title):
+            return None
+
+        try:
+            results = await self.openalex_client.search_papers(title, limit=5)
+        except OpenAlexError:
+            return None
+
+        exact_matches = _exact_title_matches(results, title)
+        return exact_matches[0] if exact_matches else None
+
+    async def _resolve_crossref_match(self, paper: dict) -> dict | None:
+        doi = ((paper.get("externalIds") or {}).get("DOI") or "").strip()
+        if doi:
+            try:
+                return await self.crossref_client.get_work(doi)
+            except (CrossrefError, CrossrefNotFoundError):
+                pass
+
+        title = (paper.get("title") or "").strip()
+        if not _should_enrich_by_title(title):
+            return None
+
+        try:
+            return await self.crossref_client.find_exact_title(title)
+        except CrossrefError:
+            return None
+
+    def _build_source_links(
+        self,
+        paper: dict,
+        semantic_match: dict | None,
+        openalex_match: dict | None,
+        crossref_match: dict | None,
+    ) -> list[SourceLink]:
+        links: list[SourceLink] = []
+        seen: set[str] = set()
+
+        def add(kind: str, href: str | None, primary: bool = False) -> None:
+            if not href or href in seen:
+                return
+            seen.add(href)
+            links.append(SourceLink(kind=kind, href=href, primary=primary))
+
+        doi = ((paper.get("externalIds") or {}).get("DOI") or "").strip()
+        paper_id = paper.get("paperId") or ""
+        title = (paper.get("title") or "").strip()
+        publisher_url = _pick_best_publisher_url(
+            paper.get("url"),
+            (semantic_match or {}).get("url"),
+            (openalex_match or {}).get("url"),
+            (crossref_match or {}).get("url"),
+        )
+
+        if doi:
+            add("doi", f"https://doi.org/{doi}", primary=True)
+
+        if publisher_url and (not doi or publisher_url != f"https://doi.org/{doi}"):
+            add("publisher", publisher_url, primary=not doi)
+
+        semantic_id = (semantic_match or {}).get("paperId") or (paper_id if not _is_openalex_id(paper_id) and not paper_id.startswith("FRONTIERS:") and not paper_id.startswith("DOI:") else "")
+        if semantic_id:
+            add("semantic_scholar", f"https://www.semanticscholar.org/paper/{semantic_id}")
+
+        openalex_id = (openalex_match or {}).get("paperId") or (paper_id if _is_openalex_id(paper_id) else "")
+        if openalex_id:
+            add("openalex", f"https://openalex.org/{openalex_id}")
+
+        crossref_doi = (((crossref_match or {}).get("externalIds") or {}).get("DOI") or doi or "").strip()
+        if crossref_doi:
+            add("crossref", f"https://search.crossref.org/?q={quote(crossref_doi)}")
+        elif title:
+            add("crossref", f"https://search.crossref.org/?q={quote(title)}")
+
+        if paper_id.startswith("FRONTIERS:") or "frontiersin.org" in (publisher_url or ""):
+            add("frontiers", publisher_url or f"https://www.frontiersin.org/search?query={quote(title)}")
+
+        if title:
+            add("google_scholar", f"https://scholar.google.com/scholar?q={quote(title)}")
+
+        return links
+
 
 def _is_title_like_query(query: str) -> bool:
     return len(query.strip()) >= 40 or len(query.strip().split()) >= 5
+
+
+def _should_enrich_by_title(query: str) -> bool:
+    stripped = query.strip()
+    return len(stripped) >= 16 or len(stripped.split()) >= 3
 
 
 def _normalize_title(title: str | None) -> str:
@@ -426,3 +560,20 @@ def _is_openalex_id(paper_id: str) -> bool:
 def _should_prefer_openalex(paper_id: str) -> bool:
     normalized = paper_id.strip()
     return _is_openalex_id(normalized) or normalized.upper().startswith("DOI:")
+
+
+def _pick_best_publisher_url(*urls: str | None) -> str | None:
+    for url in urls:
+        if not url:
+            continue
+        lowered = url.lower()
+        if lowered.startswith("https://doi.org/") or lowered.startswith("http://doi.org/"):
+            continue
+        if "semanticscholar.org" in lowered or "openalex.org/" in lowered or "api.crossref.org/" in lowered:
+            continue
+        return url
+
+    for url in urls:
+        if url:
+            return url
+    return None

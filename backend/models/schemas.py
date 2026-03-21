@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PaperSummary(BaseModel):
@@ -14,11 +14,19 @@ class PaperSummary(BaseModel):
     abstract: Optional[str] = None
 
 
+class SourceLink(BaseModel):
+    kind: str
+    href: str
+    primary: bool = False
+
+
 class PaperDetail(PaperSummary):
     venue: Optional[str] = None
     doi: Optional[str] = None
     url: Optional[str] = None
     reference_count: Optional[int] = None
+    external_ids: dict[str, str] = Field(default_factory=dict)
+    source_links: list[SourceLink] = Field(default_factory=list)
 
 
 class GraphNode(BaseModel):

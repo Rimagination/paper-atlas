@@ -69,10 +69,40 @@ export function buildPaperLinks(paper, labels = {}) {
     doi = "DOI",
     openSource = "Open source",
     openAlex = "OpenAlex",
+    crossref = "Crossref",
     frontiers = "Frontiers",
     semanticScholar = "Semantic Scholar",
-    googleScholar = "Google Scholar"
+    googleScholar = "Google Scholar",
+    publisher = "Publisher"
   } = labels;
+
+  if (Array.isArray(paper?.source_links) && paper.source_links.length) {
+    return paper.source_links.map((link) => ({
+      href: link.href,
+      primary: Boolean(link.primary),
+      icon:
+        link.kind === "semantic_scholar"
+          ? "semantic"
+          : link.kind === "google_scholar"
+            ? "scholar"
+            : link.kind,
+      label:
+        link.kind === "doi"
+          ? doi
+          : link.kind === "openalex"
+            ? openAlex
+            : link.kind === "crossref"
+              ? crossref
+              : link.kind === "frontiers"
+                ? frontiers
+                : link.kind === "semantic_scholar"
+                  ? semanticScholar
+                  : link.kind === "google_scholar"
+                    ? googleScholar
+                    : publisher
+    }));
+  }
+
   const primaryUrl = resolvePaperUrl(paper);
   const referenceUrl = resolveReferenceUrl(paper);
   const links = [];
