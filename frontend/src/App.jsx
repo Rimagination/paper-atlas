@@ -140,7 +140,7 @@ function EmptyState({ t }) {
   return (
     <div className="paper-surface rounded-[24px] p-6">
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <h1 className="text-xl font-semibold text-slate-800">{t("empty.heading")}</h1>
+        <h1 className="font-heading-cn text-xl font-semibold text-slate-800">{t("empty.heading")}</h1>
       </div>
     </div>
   );

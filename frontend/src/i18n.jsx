@@ -161,10 +161,10 @@ const messages = {
   },
   zh: {
     page: {
-      title: "Paper Atlas | 研究图谱工作台"
+      title: "Paper Atlas | 研究图谱"
     },
     search: {
-      tagline: "研究图谱工作台",
+      tagline: "研究图谱",
       placeholder: "输入论文标题或 DOI",
       support: "标题 / DOI",
       aria: "搜索论文",
