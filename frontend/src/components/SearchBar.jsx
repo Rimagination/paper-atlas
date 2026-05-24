@@ -106,7 +106,12 @@ export default function SearchBar({
 
             <div className="min-w-0">
               <div className="font-heading text-[1.2rem] font-semibold tracking-[-0.04em] text-slate-950">Paper Atlas</div>
-              <div className="text-[11px] uppercase tracking-[0.22em] text-slate-400">{t("search.tagline")}</div>
+              <div className="flex items-center gap-1.5 text-[11px] tracking-[0.12em] text-slate-400">
+                <a href="https://www.scansci.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-slate-400 transition-colors hover:text-violet-600">
+                  <img src="/brand/scansci-app-icon-64.png" alt="" className="h-3.5 w-3.5 rounded-sm" />
+                  ScanSci 出品
+                </a>
+              </div>
             </div>
           </div>
 
